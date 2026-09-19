@@ -259,6 +259,15 @@
       <h2>Appearance</h2>
 
       <div class="field">
+        <label for="typeStyle">Text style</label>
+        <select id="typeStyle">
+          <option value="site">Match my site's fonts and sizes</option>
+          <option value="builtin">Use the built-in bold style</option>
+        </select>
+        <p class="hint" style="margin:0.4rem 0 0">Matching your site means the bar uses whatever font, size and weight that page already uses, so it changes with your Squarespace style settings.</p>
+      </div>
+
+      <div class="field">
         <label for="phoneMode">On phones and narrow spaces, show the links as</label>
         <select id="phoneMode">
           <option value="dropdown">A dropdown menu you tap to open</option>
@@ -351,6 +360,7 @@
     titleUrl: "",
     sticky: false,
     phone: "dropdown",
+    type: "site",
     bg: "#ececec",
     text: "#111111",
     accent: "#111111",
@@ -365,6 +375,7 @@
     titleUrl: document.getElementById("titleUrl"),
     sticky: document.getElementById("sticky"),
     phone: document.getElementById("phoneMode"),
+    type: document.getElementById("typeStyle"),
     bg: document.getElementById("bg"),
     text: document.getElementById("text"),
     accent: document.getElementById("accent"),
@@ -471,11 +482,20 @@
      Building the code + preview
      ------------------------------------------------------------------ */
   function styleString() {
-    return "--sn-bg:" + state.bg +
+    var css = "--sn-bg:" + state.bg +
       "; --sn-text:" + state.text +
       "; --sn-accent:" + state.accent +
       "; --sn-muted:" + fade(state.text, 0.55) +
       "; --sn-divider:" + fade(state.text, 0.15);
+
+    // Left out entirely when matching the site, because the stylesheet already
+    // defaults every one of these to "inherit".
+    if (state.type === "builtin") {
+      css += "; --sn-font-size:1rem; --sn-font-weight:700; --sn-letter-spacing:0" +
+        "; --sn-title-size:1.25rem; --sn-title-weight:700";
+    }
+
+    return css;
   }
 
   /* Turns #111111 into rgba(17,17,17,0.55) so links you're not on look softer
@@ -594,6 +614,7 @@
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
+    state.type = /--sn-title-size/.test(found.getAttribute("style") || "") ? "builtin" : "site";
     state.links = links.map(function (link) {
       return { label: String(link.label || ""), url: String(link.url || ""), newTab: !!link.newTab };
     });
@@ -612,6 +633,7 @@
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
     el.phone.value = state.phone;
+    el.type.value = state.type;
     ["bg", "text", "accent"].forEach(function (name) {
       el[name].value = state[name];
       document.getElementById(name + "Hex").value = state[name];
@@ -674,6 +696,11 @@
 
   el.phone.addEventListener("change", function () {
     state.phone = el.phone.value;
+    update();
+  });
+
+  el.type.addEventListener("change", function () {
+    state.type = el.type.value;
     update();
   });
 
@@ -759,6 +786,7 @@
       if (parsed && Array.isArray(parsed.links)) {
         state = parsed;
         if (state.phone !== "swipe") state.phone = "dropdown";
+        if (state.type !== "builtin") state.type = "site";
       }
     }
   } catch (error) { /* ignore and use the defaults */ }

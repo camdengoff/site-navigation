@@ -79,6 +79,33 @@ stops working**, because the site loads `nav.css` and `nav.js` from that address
 
 ---
 
+## Type
+
+Every type property defaults to `inherit`, so the bar takes its font, size,
+weight, letter spacing and capitalisation from whatever the page already uses.
+Change the site's typography in Squarespace and the bar follows, with nothing to
+update here.
+
+The builder's **Text style** setting switches this:
+
+- **Match my site's fonts and sizes** (default) — writes no type values at all,
+  so everything inherits.
+- **Use the built-in bold style** — writes a fixed 1rem/700 link and
+  1.25rem/700 label, the look in the screenshots.
+
+You can also mix the two. To inherit everything but keep the label bold, add one
+variable to the embed:
+
+```html
+<div data-site-nav style="--sn-title-weight:700" ...></div>
+```
+
+Or set it for every bar at once in **Squarespace → Website → Custom CSS**:
+
+```css
+.sn-nav { --sn-title-weight: 700; }
+```
+
 ## Restyling it
 
 Every color, size, and spacing value is a CSS variable at the top of `nav.css`.
@@ -98,8 +125,11 @@ builder already does this with the `style` attribute:
 | `--sn-muted` | Color of the links you're not on |
 | `--sn-accent` | Marker on the current page (underline, or a bar in the dropdown) |
 | `--sn-divider` | Hairline above the open dropdown |
-| `--sn-font` | Font. `inherit` uses the site's own font. |
+| `--sn-font` | Font family |
 | `--sn-font-size` / `--sn-title-size` | Link and label text size |
+| `--sn-font-weight` / `--sn-title-weight` | Link and label weight |
+| `--sn-letter-spacing` | Letter spacing |
+| `--sn-text-transform` | e.g. `uppercase` |
 | `--sn-height` | Bar height in the wide layout |
 | `--sn-gap` | Space between links |
 | `--sn-pad-x` | Space from the left and right edges |

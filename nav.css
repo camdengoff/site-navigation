@@ -22,9 +22,16 @@
   --sn-accent: #111111;            /* underline under the current page */
   --sn-muted: rgba(0, 0, 0, 0.55); /* color of the other links */
   --sn-divider: rgba(0, 0, 0, 0.15); /* hairline above the open dropdown */
-  --sn-font: inherit;              /* inherit = use the site's own font */
-  --sn-font-size: 1rem;
-  --sn-title-size: 1.25rem;
+  /* Type. "inherit" means "whatever this page already uses", so by default the
+     bar picks up the site's own fonts, sizes and weights instead of imposing
+     its own. Set any of these to a real value to override the site. */
+  --sn-font: inherit;
+  --sn-font-size: inherit;
+  --sn-font-weight: inherit;
+  --sn-letter-spacing: inherit;
+  --sn-text-transform: inherit;
+  --sn-title-size: inherit;
+  --sn-title-weight: inherit;
   --sn-height: 4.5rem;             /* bar height in the wide layout */
   --sn-gap: 2.5rem;                /* space between links */
   --sn-pad-x: 2rem;                /* space from the left/right edge */
@@ -81,8 +88,9 @@
 .sn-nav__title {
   margin: 0;
   font-size: var(--sn-title-size);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: var(--sn-title-weight);
+  letter-spacing: var(--sn-letter-spacing);
+  text-transform: var(--sn-text-transform);
   color: var(--sn-text);
   white-space: nowrap;
   text-decoration: none;
@@ -121,7 +129,9 @@ a.sn-nav__title:hover {
   display: inline-block;
   padding: 0.35em 0;
   font-size: var(--sn-font-size);
-  font-weight: 700;
+  font-weight: var(--sn-font-weight);
+  letter-spacing: var(--sn-letter-spacing);
+  text-transform: var(--sn-text-transform);
   line-height: 1.2;
   color: var(--sn-muted);
   text-decoration: none;
@@ -160,7 +170,9 @@ a.sn-nav__title:hover {
   color: var(--sn-text);
   font: inherit;
   font-size: var(--sn-font-size);
-  font-weight: 700;
+  font-weight: var(--sn-font-weight);
+  letter-spacing: var(--sn-letter-spacing);
+  text-transform: var(--sn-text-transform);
   text-align: left;
   cursor: pointer;
 }
@@ -216,7 +228,6 @@ a.sn-nav__title:hover {
 
 .sn-nav[data-narrow="true"] .sn-nav__title {
   padding: 0.9rem var(--sn-pad-x) 0.5rem;
-  font-size: calc(var(--sn-title-size) * 0.95);
 }
 
 /* ---- Narrow style 1: swipeable row (data-phone="swipe") ---- */
