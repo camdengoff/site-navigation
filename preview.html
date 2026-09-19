@@ -35,6 +35,7 @@
       if (config.title) el.setAttribute("data-title", config.title);
       if (config.titleUrl) el.setAttribute("data-title-url", config.titleUrl);
       el.setAttribute("data-sticky", config.sticky ? "true" : "false");
+      el.setAttribute("data-phone", config.phone === "swipe" ? "swipe" : "dropdown");
       if (config.style) el.setAttribute("style", config.style);
 
       mount.appendChild(el);

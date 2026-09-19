@@ -18,8 +18,12 @@
 (function () {
   "use strict";
 
-  /* Below this many pixels wide, the bar stacks the label above the links. */
+  /* Below this many pixels wide, the bar switches to its narrow layout. */
   var NARROW_WIDTH = 640;
+
+  /* Used to give each bar's link list a unique id, so the dropdown button can
+     point at the list it opens. */
+  var counter = 0;
 
   /* Only these link types are allowed. This blocks things like javascript:
      links, which is a common way people try to sneak code onto a page. */
@@ -84,10 +88,14 @@
   function render(el, links) {
     var title = el.getAttribute("data-title");
     var titleUrl = el.getAttribute("data-title-url");
+    // In a tight space the links become a dropdown, unless the embed asks for
+    // the swipeable row instead.
+    var phoneMode = el.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
 
     el.classList.add("sn-nav");
     el.setAttribute("data-sticky", el.getAttribute("data-sticky") === "true" ? "true" : "false");
     el.setAttribute("data-has-title", title ? "true" : "false");
+    el.setAttribute("data-phone", phoneMode);
     el.innerHTML = "";
 
     var nav = document.createElement("nav");
@@ -105,9 +113,12 @@
 
     var scroller = document.createElement("div");
     scroller.className = "sn-nav__scroller";
+    scroller.id = "sn-links-" + (++counter);
 
     var list = document.createElement("ul");
     list.className = "sn-nav__list";
+
+    var currentLabel = "";
 
     links.forEach(function (item) {
       if (!isSafe(item.url)) return;
@@ -125,6 +136,7 @@
       }
       if (isCurrentPage(item.url)) {
         a.setAttribute("aria-current", "page");
+        currentLabel = item.label;
       }
 
       li.appendChild(a);
@@ -132,10 +144,59 @@
     });
 
     scroller.appendChild(list);
+
+    if (phoneMode === "dropdown") {
+      nav.appendChild(buildToggle(el, scroller, currentLabel));
+    }
+
     nav.appendChild(scroller);
     el.appendChild(nav);
 
     watchSize(el, scroller);
+  }
+
+  /* The button that opens the dropdown. It shows the name of the page you are
+     on, so it also tells you where you are. */
+  function buildToggle(el, scroller, currentLabel) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "sn-nav__toggle";
+    button.setAttribute("aria-expanded", "false");
+    button.setAttribute("aria-controls", scroller.id);
+
+    var text = document.createElement("span");
+    text.textContent = currentLabel || "Menu";
+
+    var chevron = document.createElement("span");
+    chevron.className = "sn-nav__chevron";
+    chevron.setAttribute("aria-hidden", "true");
+
+    button.appendChild(text);
+    button.appendChild(chevron);
+
+    button.addEventListener("click", function () {
+      setOpen(el, button, el.getAttribute("data-open") !== "true");
+    });
+
+    // Tapping anywhere else on the page closes it.
+    document.addEventListener("click", function (event) {
+      if (!el.contains(event.target)) setOpen(el, button, false);
+    });
+
+    // Escape closes it and puts the focus back on the button.
+    el.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && el.getAttribute("data-open") === "true") {
+        setOpen(el, button, false);
+        button.focus();
+      }
+    });
+
+    return button;
+  }
+
+  function setOpen(el, button, open) {
+    el.setAttribute("data-open", open ? "true" : "false");
+    button.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
   /* ---------------------------------------------------------------------
@@ -165,7 +226,16 @@
      fade on the right edge only while there is more to swipe to. */
   function watchSize(el, scroller) {
     function update() {
-      el.setAttribute("data-narrow", el.clientWidth < NARROW_WIDTH ? "true" : "false");
+      var narrow = el.clientWidth < NARROW_WIDTH;
+      el.setAttribute("data-narrow", narrow ? "true" : "false");
+
+      // Widening the window while the dropdown is open would otherwise leave it
+      // stuck open behind the wide layout.
+      if (!narrow && el.getAttribute("data-open") === "true") {
+        var button = el.querySelector(".sn-nav__toggle");
+        if (button) setOpen(el, button, false);
+      }
+
       var remaining = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
       el.setAttribute("data-overflow", remaining > 8 ? "true" : "false");
     }

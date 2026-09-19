@@ -68,7 +68,7 @@
 
   label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.3rem; }
 
-  input[type="text"], input[type="url"], textarea {
+  input[type="text"], input[type="url"], textarea, select {
     width: 100%;
     padding: 0.55rem 0.65rem;
     border: 1px solid var(--line);
@@ -170,7 +170,17 @@
     background: none;
     cursor: pointer;
   }
-  .swatch code { font-size: 0.78rem; color: var(--ink-soft); }
+  .swatch .hex {
+    border: none;
+    padding: 0.2rem 0.1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    text-transform: lowercase;
+    min-width: 0;
+  }
+  .swatch .hex:focus { outline: none; }
+  .swatch:focus-within { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .swatch.is-invalid { border-color: #e5827d; background: #fdeceb; }
 
   /* ---- preview ---- */
   .preview-bar {
@@ -246,20 +256,29 @@
     </section>
 
     <section class="card">
-      <h2>Colors</h2>
-      <p class="hint">Click a square to pick a color.</p>
+      <h2>Appearance</h2>
+
+      <div class="field">
+        <label for="phoneMode">On phones and narrow spaces, show the links as</label>
+        <select id="phoneMode">
+          <option value="dropdown">A dropdown menu you tap to open</option>
+          <option value="swipe">A single row you swipe sideways</option>
+        </select>
+      </div>
+
+      <p class="hint">Click a square to pick a color, or type a hex code like <code>#1a56db</code>.</p>
       <div class="colors">
         <div>
           <label for="bg">Bar background</label>
-          <div class="swatch"><input type="color" id="bg" value="#ececec"><code id="bgHex">#ececec</code></div>
+          <div class="swatch"><input type="color" id="bg" value="#ececec"><input type="text" class="hex" id="bgHex" value="#ececec" spellcheck="false" aria-label="Bar background hex code"></div>
         </div>
         <div>
           <label for="text">Text</label>
-          <div class="swatch"><input type="color" id="text" value="#111111"><code id="textHex">#111111</code></div>
+          <div class="swatch"><input type="color" id="text" value="#111111"><input type="text" class="hex" id="textHex" value="#111111" spellcheck="false" aria-label="Text hex code"></div>
         </div>
         <div>
-          <label for="accent">Current page underline</label>
-          <div class="swatch"><input type="color" id="accent" value="#111111"><code id="accentHex">#111111</code></div>
+          <label for="accent">Current page marker</label>
+          <div class="swatch"><input type="color" id="accent" value="#111111"><input type="text" class="hex" id="accentHex" value="#111111" spellcheck="false" aria-label="Current page marker hex code"></div>
         </div>
       </div>
       <p class="warn" id="contrastWarning" hidden>Heads up: this text color is hard to read on this background. Visitors with low vision may not be able to read the links.</p>
@@ -293,7 +312,7 @@
       <div class="frame-wrap">
         <iframe id="preview" src="preview.html" title="Navigation preview" data-size="desktop"></iframe>
       </div>
-      <p class="hint" style="margin:0.75rem 0 0">On phones the links become one row you can swipe sideways &mdash; nothing is hidden behind a dropdown.</p>
+      <p class="hint" style="margin:0.75rem 0 0">Click <strong>Phone</strong> to check the narrow layout. The dropdown opens and closes here just like it will on the real page.</p>
     </section>
 
     <section class="card">
@@ -331,6 +350,7 @@
     title: "Watch Online",
     titleUrl: "",
     sticky: false,
+    phone: "dropdown",
     bg: "#ececec",
     text: "#111111",
     accent: "#111111",
@@ -344,6 +364,7 @@
     title: document.getElementById("title"),
     titleUrl: document.getElementById("titleUrl"),
     sticky: document.getElementById("sticky"),
+    phone: document.getElementById("phoneMode"),
     bg: document.getElementById("bg"),
     text: document.getElementById("text"),
     accent: document.getElementById("accent"),
@@ -453,7 +474,8 @@
     return "--sn-bg:" + state.bg +
       "; --sn-text:" + state.text +
       "; --sn-accent:" + state.accent +
-      "; --sn-muted:" + fade(state.text, 0.55);
+      "; --sn-muted:" + fade(state.text, 0.55) +
+      "; --sn-divider:" + fade(state.text, 0.15);
   }
 
   /* Turns #111111 into rgba(17,17,17,0.55) so links you're not on look softer
@@ -497,6 +519,9 @@
     if (state.sticky) {
       lines.push('     data-sticky="true"');
     }
+    // Always written out, so the snippet says plainly which phone layout it
+    // uses instead of relying on the default.
+    lines.push('     data-phone="' + (state.phone === "swipe" ? "swipe" : "dropdown") + '"');
     lines.push('     style="' + attr(styleString(), '"') + '"');
     lines.push("     data-links='" + attr(JSON.stringify(cleanLinks()), "'") + "'></div>");
     lines.push('<script src="' + BASE + 'nav.js"><\/script>');
@@ -510,6 +535,7 @@
       title: state.title.trim(),
       titleUrl: state.titleUrl.trim(),
       sticky: state.sticky,
+      phone: state.phone,
       style: styleString(),
       links: cleanLinks()
     }, "*");
@@ -540,9 +566,6 @@
 
   function update() {
     checkContrast();
-    document.getElementById("bgHex").textContent = state.bg;
-    document.getElementById("textHex").textContent = state.text;
-    document.getElementById("accentHex").textContent = state.accent;
     el.output.value = buildCode();
     sendPreview();
     try {
@@ -570,6 +593,7 @@
     state.title = found.getAttribute("data-title") || "";
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
+    state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
     state.links = links.map(function (link) {
       return { label: String(link.label || ""), url: String(link.url || ""), newTab: !!link.newTab };
     });
@@ -587,9 +611,11 @@
     el.title.value = state.title;
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
-    el.bg.value = state.bg;
-    el.text.value = state.text;
-    el.accent.value = state.accent;
+    el.phone.value = state.phone;
+    ["bg", "text", "accent"].forEach(function (name) {
+      el[name].value = state[name];
+      document.getElementById(name + "Hex").value = state[name];
+    });
     drawLinks();
     update();
   }
@@ -604,15 +630,50 @@
     });
   });
 
+  /* Each color has two controls that stay in step: the picker square, and a
+     box you can type a hex code into. */
   ["bg", "text", "accent"].forEach(function (name) {
-    el[name].addEventListener("input", function () {
-      state[name] = el[name].value;
+    var picker = el[name];
+    var typed = document.getElementById(name + "Hex");
+
+    picker.addEventListener("input", function () {
+      state[name] = picker.value;
+      typed.value = picker.value;
+      typed.parentElement.classList.remove("is-invalid");
       update();
+    });
+
+    typed.addEventListener("input", function () {
+      var hex = normalizeHex(typed.value);
+      typed.parentElement.classList.toggle("is-invalid", !hex);
+      if (!hex) return;               // keep typing - nothing changes until it's valid
+      state[name] = hex;
+      picker.value = hex;
+      update();
+    });
+
+    // Tidy up whatever was left in the box when they click away.
+    typed.addEventListener("blur", function () {
+      typed.value = state[name];
+      typed.parentElement.classList.remove("is-invalid");
     });
   });
 
+  /* Accepts "1a56db", "#1a56db" or the 3-letter form "#abc". */
+  function normalizeHex(value) {
+    var hex = String(value).trim().replace(/^#/, "");
+    if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) return null;
+    if (hex.length === 3) hex = hex.replace(/./g, "$&$&");
+    return "#" + hex.toLowerCase();
+  }
+
   el.sticky.addEventListener("change", function () {
     state.sticky = el.sticky.checked;
+    update();
+  });
+
+  el.phone.addEventListener("change", function () {
+    state.phone = el.phone.value;
     update();
   });
 
@@ -695,7 +756,10 @@
     var saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
       var parsed = JSON.parse(saved);
-      if (parsed && Array.isArray(parsed.links)) state = parsed;
+      if (parsed && Array.isArray(parsed.links)) {
+        state = parsed;
+        if (state.phone !== "swipe") state.phone = "dropdown";
+      }
     }
   } catch (error) { /* ignore and use the defaults */ }
 

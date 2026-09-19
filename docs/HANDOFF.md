@@ -28,6 +28,8 @@ into Squarespace.
 **Step 3 — make your changes**
 
 - **Change wording:** type in the *Text shown* box.
+- **Change a color:** click the colored square to pick one, or type a hex code
+  like `#1a56db` in the box next to it.
 - **Change where it goes:** type in the *Goes to* box. For a page on your own
   site use the short version, like `/worship-services`. For another website,
   paste the whole address starting with `https://`.
@@ -56,8 +58,10 @@ look on a phone.
   `/worship-services`.
 - **The underline** appears automatically on whichever link matches the page the
   visitor is on. You don't set it.
-- **On phones**, the links become one row that people swipe sideways. Nothing is
-  hidden in a menu.
+- **On phones**, the links collapse into a dropdown that people tap to open. The
+  button shows the page they're on. Under **Appearance** you can switch this to
+  a row that swipes sideways instead — that works nicely with only two or three
+  links.
 - **If the bar disappears** after pasting, something was left out of the code.
   Go back to the tool, rebuild it, and paste the whole block again.
 - **Don't retype the code by hand.** Always copy and paste the whole block.

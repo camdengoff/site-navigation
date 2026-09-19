@@ -9,7 +9,10 @@
    bar itself has - not the size of the screen - so it also looks right inside
    a narrow column:
      - wide   : label on the left, links on the right, all on one line
-     - narrow : label on top, links in a row underneath that you swipe sideways
+     - narrow : a tap-to-open dropdown, or a row you swipe sideways
+
+   Which of the two narrow styles you get is set by data-phone="dropdown"
+   (the default) or data-phone="swipe" in the embed code.
    ========================================================================== */
 
 .sn-nav {
@@ -18,6 +21,7 @@
   --sn-text: #111111;              /* label + current link color */
   --sn-accent: #111111;            /* underline under the current page */
   --sn-muted: rgba(0, 0, 0, 0.55); /* color of the other links */
+  --sn-divider: rgba(0, 0, 0, 0.15); /* hairline above the open dropdown */
   --sn-font: inherit;              /* inherit = use the site's own font */
   --sn-font-size: 1rem;
   --sn-title-size: 1.25rem;
@@ -135,6 +139,44 @@ a.sn-nav__title:hover {
   border-radius: 2px;
 }
 
+/* ---- The dropdown button (only used in the narrow dropdown layout) ---- */
+.sn-nav__toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.95rem var(--sn-pad-x);
+  border: 0;
+  background: none;
+  color: var(--sn-text);
+  font: inherit;
+  font-size: var(--sn-font-size);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sn-nav__toggle:focus-visible {
+  outline: 2px solid var(--sn-accent);
+  outline-offset: -3px;
+}
+
+/* The little chevron, drawn with two borders so there is no image to load. */
+.sn-nav__chevron {
+  flex: none;
+  width: 0.55em;
+  height: 0.55em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-25%) rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.sn-nav[data-open="true"] .sn-nav__chevron {
+  transform: translateY(15%) rotate(225deg);
+}
+
 /* Soft fade on the right edge, so it is obvious there is more to swipe to.
    It only appears while there is more list to scroll. */
 .sn-nav[data-overflow="true"]::after {
@@ -150,7 +192,6 @@ a.sn-nav__title:hover {
 
 /* ==========================================================================
    Narrow layout (phones, and any column too tight for one line)
-   Every link stays one swipe away - nothing is hidden behind a dropdown.
    ========================================================================== */
 .sn-nav[data-narrow="true"] {
   --sn-gap: 1.5rem;
@@ -170,12 +211,52 @@ a.sn-nav__title:hover {
   font-size: calc(var(--sn-title-size) * 0.95);
 }
 
-.sn-nav[data-narrow="true"] .sn-nav__list {
+/* ---- Narrow style 1: swipeable row (data-phone="swipe") ---- */
+.sn-nav[data-narrow="true"][data-phone="swipe"] .sn-nav__list {
   padding: 0 var(--sn-pad-x) 0.9rem;
 }
 
-.sn-nav[data-narrow="true"][data-has-title="false"] .sn-nav__list {
+.sn-nav[data-narrow="true"][data-phone="swipe"][data-has-title="false"] .sn-nav__list {
   padding-top: 0.9rem;
+}
+
+/* ---- Narrow style 2: dropdown (data-phone="dropdown") ----
+   The list is hidden until the button is tapped, then it opens underneath and
+   pushes the page down - so it can never be clipped or hidden behind anything.
+   The button doubles as a "you are here" label. */
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__toggle {
+  display: flex;
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__title {
+  padding-bottom: 0;
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__scroller {
+  display: none;
+  border-top: 1px solid var(--sn-divider);
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"][data-open="true"] .sn-nav__scroller {
+  display: block;
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__list {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 0;
+  padding: 0.35rem 0 0.6rem;
+}
+
+/* Big tap targets, and the underline becomes a bar down the left instead. */
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__link {
+  padding: 0.75rem var(--sn-pad-x);
+  border-bottom: 0;
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__link[aria-current="page"] {
+  box-shadow: inset 3px 0 0 var(--sn-accent);
 }
 
 /* Respect the visitor's "reduce motion" setting */

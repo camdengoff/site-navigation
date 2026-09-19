@@ -18,10 +18,23 @@ for you.
 
 | | Text blocks + dropdown | This |
 |---|---|---|
-| Phone layout | Links hidden, dropdown shown instead | One row you swipe sideways — nothing hidden |
+| Phone layout | A second, separate menu you maintain by hand | Built in — pick a dropdown or a swipeable row |
 | Changing a link | Edit the text block, then edit the dropdown too | Change it once, in the builder |
-| Current page | Not shown | Underlined automatically |
+| Current page | Not shown | Marked automatically, and named on the dropdown button |
 | Handing it off | Person has to understand the CSS that hides things | Person fills in a form |
+
+### The two phone layouts
+
+Set in the builder under **Appearance**, or by hand with `data-phone`:
+
+- **`dropdown`** (default) — a single row with a button that opens the links
+  underneath. The button shows the name of the page you're on, so it says where
+  you are as well as what's available. Best when there are more than about three
+  links.
+- **`swipe`** — all the links in one row you drag sideways, nothing hidden.
+  Best for two or three short links.
+
+Either way it's one Code Block. There's no separate mobile menu to keep in sync.
 
 ---
 
@@ -83,7 +96,8 @@ builder already does this with the `style` attribute:
 | `--sn-bg` | Bar background |
 | `--sn-text` | Label and current-page link color |
 | `--sn-muted` | Color of the links you're not on |
-| `--sn-accent` | Underline under the current page |
+| `--sn-accent` | Marker on the current page (underline, or a bar in the dropdown) |
+| `--sn-divider` | Hairline above the open dropdown |
 | `--sn-font` | Font. `inherit` uses the site's own font. |
 | `--sn-font-size` / `--sn-title-size` | Link and label text size |
 | `--sn-height` | Bar height in the wide layout |
@@ -91,9 +105,8 @@ builder already does this with the `style` attribute:
 | `--sn-pad-x` | Space from the left and right edges |
 | `--sn-radius` | Rounded corners |
 
-The bar switches to the stacked, swipeable layout when **the bar itself** is
-under 640px wide — not when the screen is. So it also looks right inside a
-narrow column.
+The bar switches to its narrow layout when **the bar itself** is under 640px
+wide — not when the screen is. So it also looks right inside a narrow column.
 
 ---
 
