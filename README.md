@@ -20,17 +20,17 @@ for you.
 |---|---|---|
 | Phone layout | A second, separate menu you maintain by hand | Built in — pick a dropdown or a swipeable row |
 | Changing a link | Edit the text block, then edit the dropdown too | Change it once, in the builder |
-| Current page | Not shown | Marked automatically, and named on the dropdown button |
+| Current page | Not shown | Marked automatically |
 | Handing it off | Person has to understand the CSS that hides things | Person fills in a form |
 
 ### The two phone layouts
 
 Set in the builder under **Appearance**, or by hand with `data-phone`:
 
-- **`dropdown`** (default) — a single row with a button that opens the links
-  underneath. The button shows the name of the page you're on, so it says where
-  you are as well as what's available. Best when there are more than about three
-  links.
+- **`dropdown`** (default) — the bar stays one line: your label on the left, an
+  arrow on the right that opens the links underneath. With no label set, the
+  button widens and names the page you're on instead, so it's never a bare
+  arrow. Best when there are more than about three links.
 - **`swipe`** — all the links in one row you drag sideways, nothing hidden.
   Best for two or three short links.
 

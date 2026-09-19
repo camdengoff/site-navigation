@@ -69,6 +69,14 @@
   justify-content: flex-start;
 }
 
+/* Holds the label and, in the narrow dropdown layout, the arrow button - so
+   the two sit on the same line. */
+.sn-nav__head {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 /* ---- The label on the left (e.g. "Watch Online") ---- */
 .sn-nav__title {
   margin: 0;
@@ -228,8 +236,22 @@ a.sn-nav__title:hover {
   display: flex;
 }
 
+/* The label and the arrow share one line, arrow pinned to the right. */
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__head {
+  justify-content: space-between;
+  width: 100%;
+}
+
 .sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__title {
-  padding-bottom: 0;
+  padding: 0.9rem 0 0.9rem var(--sn-pad-x);
+}
+
+/* Beside a label, the button is just the arrow - but still a full-height,
+   comfortable tap target. */
+.sn-nav[data-narrow="true"][data-phone="dropdown"][data-has-title="true"] .sn-nav__toggle {
+  width: auto;
+  align-self: stretch;
+  padding: 0.9rem var(--sn-pad-x);
 }
 
 .sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__scroller {

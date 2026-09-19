@@ -58,10 +58,10 @@ look on a phone.
   `/worship-services`.
 - **The underline** appears automatically on whichever link matches the page the
   visitor is on. You don't set it.
-- **On phones**, the links collapse into a dropdown that people tap to open. The
-  button shows the page they're on. Under **Appearance** you can switch this to
-  a row that swipes sideways instead — that works nicely with only two or three
-  links.
+- **On phones**, the bar stays one line: your label on the left and an arrow on
+  the right that people tap to open the links. Under **Appearance** you can
+  switch this to a row that swipes sideways instead — that works nicely with
+  only two or three links.
 - **If the bar disappears** after pasting, something was left out of the code.
   Go back to the tool, rebuild it, and paste the whole block again.
 - **Don't retype the code by hand.** Always copy and paste the whole block.

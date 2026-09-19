@@ -102,13 +102,18 @@
     nav.className = "sn-nav__inner";
     nav.setAttribute("aria-label", title || "Section navigation");
 
+    // The label and the dropdown button share a row, so they live together in
+    // a "head" wrapper.
+    var head = document.createElement("div");
+    head.className = "sn-nav__head";
+
     if (title) {
       // A title with a link becomes a link; without one it is just text.
       var titleEl = document.createElement(isSafe(titleUrl) ? "a" : "span");
       titleEl.className = "sn-nav__title";
       titleEl.textContent = title;
       if (titleEl.tagName === "A") titleEl.href = titleUrl;
-      nav.appendChild(titleEl);
+      head.appendChild(titleEl);
     }
 
     var scroller = document.createElement("div");
@@ -146,32 +151,39 @@
     scroller.appendChild(list);
 
     if (phoneMode === "dropdown") {
-      nav.appendChild(buildToggle(el, scroller, currentLabel));
+      head.appendChild(buildToggle(el, scroller, title, currentLabel));
     }
 
+    nav.appendChild(head);
     nav.appendChild(scroller);
     el.appendChild(nav);
 
     watchSize(el, scroller);
   }
 
-  /* The button that opens the dropdown. It shows the name of the page you are
-     on, so it also tells you where you are. */
-  function buildToggle(el, scroller, currentLabel) {
+  /* The button that opens the dropdown.
+     When the bar has a label, the button is just the arrow, sitting on the same
+     line as that label. With no label to sit beside, it fills the row and names
+     the page you are on instead, so the bar never shows a bare arrow. */
+  function buildToggle(el, scroller, title, currentLabel) {
     var button = document.createElement("button");
     button.type = "button";
     button.className = "sn-nav__toggle";
     button.setAttribute("aria-expanded", "false");
     button.setAttribute("aria-controls", scroller.id);
 
-    var text = document.createElement("span");
-    text.textContent = currentLabel || "Menu";
+    if (title) {
+      button.setAttribute("aria-label", title + " links");
+    } else {
+      var text = document.createElement("span");
+      text.textContent = currentLabel || "Links";
+      button.appendChild(text);
+    }
 
     var chevron = document.createElement("span");
     chevron.className = "sn-nav__chevron";
     chevron.setAttribute("aria-hidden", "true");
 
-    button.appendChild(text);
     button.appendChild(chevron);
 
     button.addEventListener("click", function () {
