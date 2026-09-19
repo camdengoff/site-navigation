@@ -8,9 +8,9 @@ that only shows on phones. Here, one block handles both, and **the links are not
 written into the code** — they live in a short list that a builder tool writes
 for you.
 
-**[Open the builder →](https://lc-camdengoff.github.io/site-navigation/builder.html)**
+**[Open the builder →](https://camdengoff.github.io/site-navigation/builder.html)**
 &nbsp;·&nbsp;
-**[See it live →](https://lc-camdengoff.github.io/site-navigation/)**
+**[See it live →](https://camdengoff.github.io/site-navigation/)**
 
 ---
 
@@ -27,7 +27,7 @@ for you.
 
 ## Adding it to a page
 
-1. Open the [builder](https://lc-camdengoff.github.io/site-navigation/builder.html).
+1. Open the [builder](https://camdengoff.github.io/site-navigation/builder.html).
 2. Type in your label, links, and colors. Watch the preview.
 3. Click **Copy code**.
 4. In Squarespace, edit the page → add a **Code Block** where you want the bar.
@@ -60,7 +60,7 @@ That's the whole workflow. Nobody needs to read or edit a file in this repo.
 | `docs/HANDOFF.md` | One-page instructions to give to whoever maintains this next. |
 
 The files are served from GitHub Pages at
-`https://lc-camdengoff.github.io/site-navigation/`, which is where the embed
+`https://camdengoff.github.io/site-navigation/`, which is where the embed
 code points. **If this repo is renamed or made private, every bar on the site
 stops working**, because the site loads `nav.css` and `nav.js` from that address.
 
@@ -104,7 +104,7 @@ instead of in every Code Block. Point the bar at a `.json` file:
 
 ```html
 <div data-site-nav data-title="Watch Online"
-     data-source="https://lc-camdengoff.github.io/site-navigation/example-links.json"></div>
+     data-source="https://camdengoff.github.io/site-navigation/example-links.json"></div>
 ```
 
 Then editing that one file updates every page at once. The trade-off is that

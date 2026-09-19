@@ -7,7 +7,7 @@ The row of links near the top of pages like **Watch Online** is built by a tool.
 You fill in a form, it gives you a block of code, and you paste that code back
 into Squarespace.
 
-**The tool:** <https://lc-camdengoff.github.io/site-navigation/builder.html>
+**The tool:** <https://camdengoff.github.io/site-navigation/builder.html>
 
 ---
 
