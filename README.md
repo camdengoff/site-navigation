@@ -98,6 +98,14 @@ with nothing to re-paste here. The heading level is a dropdown in the builder
 <div data-site-nav data-title-tag="h4" data-link-tag="p" ...></div>
 ```
 
+**Bold** is a separate pair of checkboxes, so you can take the site's fonts and
+still make the bar stand out. They work in all three modes and override the
+site's own weight:
+
+```html
+<div data-site-nav data-bold-label="true" data-bold-links="true" ...></div>
+```
+
 Two things stay ours in every mode: the link colors and the current-page marker.
 Those come from the builder, not the site, so the bar always reads as a bar.
 

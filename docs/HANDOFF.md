@@ -33,6 +33,8 @@ into Squarespace.
 - **Fonts** come from the website's own style settings, so you don't set them
   here. The label uses your Heading 4 style and the links use your paragraph
   style. Change those in Squarespace and the bar follows.
+- **Make text bold:** tick *Bold the label* or *Bold the links* under
+  **Appearance**.
 - **Change where it goes:** type in the *Goes to* box. For a page on your own
   site use the short version, like `/worship-services`. For another website,
   paste the whole address starting with `https://`.

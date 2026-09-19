@@ -286,6 +286,18 @@
         </select>
       </div>
 
+      <div class="field">
+        <label>Bold</label>
+        <div class="checkbox">
+          <input type="checkbox" id="boldLabel">
+          <label for="boldLabel">Bold the label</label>
+        </div>
+        <div class="checkbox">
+          <input type="checkbox" id="boldLinks">
+          <label for="boldLinks">Bold the links</label>
+        </div>
+      </div>
+
       <p class="hint">Click a square to pick a color, or type a hex code like <code>#1a56db</code>.</p>
       <div class="colors">
         <div>
@@ -373,6 +385,8 @@
     phone: "dropdown",
     type: "h4p",
     heading: "h4",
+    boldLabel: false,
+    boldLinks: false,
     bg: "#ececec",
     text: "#111111",
     accent: "#111111",
@@ -389,6 +403,8 @@
     phone: document.getElementById("phoneMode"),
     type: document.getElementById("typeStyle"),
     heading: document.getElementById("headingLevel"),
+    boldLabel: document.getElementById("boldLabel"),
+    boldLinks: document.getElementById("boldLinks"),
     bg: document.getElementById("bg"),
     text: document.getElementById("text"),
     accent: document.getElementById("accent"),
@@ -562,6 +578,12 @@
       lines.push('     data-title-tag="' + state.heading + '"');
       lines.push('     data-link-tag="p"');
     }
+    if (state.boldLabel) {
+      lines.push('     data-bold-label="true"');
+    }
+    if (state.boldLinks) {
+      lines.push('     data-bold-links="true"');
+    }
     lines.push('     style="' + attr(styleString(), '"') + '"');
     lines.push("     data-links='" + attr(JSON.stringify(cleanLinks()), "'") + "'></div>");
     lines.push('<script src="' + BASE + 'nav.js"><\/script>');
@@ -578,6 +600,8 @@
       phone: state.phone,
       titleTag: state.type === "h4p" ? state.heading : "",
       linkTag: state.type === "h4p" ? "p" : "",
+      boldLabel: state.boldLabel,
+      boldLinks: state.boldLinks,
       style: styleString(),
       links: cleanLinks()
     }, "*");
@@ -638,6 +662,9 @@
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
+    state.boldLabel = found.getAttribute("data-bold-label") === "true";
+    state.boldLinks = found.getAttribute("data-bold-links") === "true";
+
     var titleTag = (found.getAttribute("data-title-tag") || "").toLowerCase();
     if (/^h[1-4]$/.test(titleTag)) {
       state.type = "h4p";
@@ -665,6 +692,8 @@
     el.phone.value = state.phone;
     el.type.value = state.type;
     el.heading.value = state.heading;
+    el.boldLabel.checked = state.boldLabel;
+    el.boldLinks.checked = state.boldLinks;
     ["bg", "text", "accent"].forEach(function (name) {
       el[name].value = state[name];
       document.getElementById(name + "Hex").value = state[name];
@@ -738,6 +767,13 @@
   el.heading.addEventListener("change", function () {
     state.heading = el.heading.value;
     update();
+  });
+
+  ["boldLabel", "boldLinks"].forEach(function (name) {
+    el[name].addEventListener("change", function () {
+      state[name] = el[name].checked;
+      update();
+    });
   });
 
   document.getElementById("addLink").addEventListener("click", function () {

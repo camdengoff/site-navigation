@@ -47,6 +47,8 @@
       el.setAttribute("data-phone", config.phone === "swipe" ? "swipe" : "dropdown");
       if (config.titleTag) el.setAttribute("data-title-tag", config.titleTag);
       if (config.linkTag) el.setAttribute("data-link-tag", config.linkTag);
+      el.setAttribute("data-bold-label", config.boldLabel ? "true" : "false");
+      el.setAttribute("data-bold-links", config.boldLinks ? "true" : "false");
       if (config.style) el.setAttribute("style", config.style);
 
       mount.appendChild(el);
