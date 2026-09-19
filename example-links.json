@@ -1,0 +1,8 @@
+{
+  "links": [
+    { "label": "Worship Services", "url": "/worship-services" },
+    { "label": "Memorial Services", "url": "/memorial-services" },
+    { "label": "Past Sermons", "url": "/past-sermons" },
+    { "label": "Give", "url": "https://example.org/give", "newTab": true }
+  ]
+}

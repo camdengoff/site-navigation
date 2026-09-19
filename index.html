@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Navigation</title>
+<link rel="stylesheet" href="nav.css">
+<style>
+  body {
+    margin: 0;
+    color: #16181d;
+    background: #fff;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 45rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  h1 { font-size: 1.8rem; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.1rem; margin: 2rem 0 0.5rem; }
+  p { color: #444a53; }
+  .cta {
+    display: inline-block;
+    background: #1a56db;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 0.7rem 1.3rem;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+  }
+  .cta:hover { background: #14439f; }
+  code { background: #f1f3f6; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+  .demo-note { color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+
+<!-- A live example of the navigation bar. -->
+<div data-site-nav
+     data-title="Watch Online"
+     style="--sn-bg:#ececec; --sn-text:#111111; --sn-accent:#111111; --sn-muted:rgba(17,17,17,0.55)"
+     data-links='[{"label":"Worship Services","url":"/worship-services"},{"label":"Memorial Services","url":"/memorial-services"},{"label":"Past Sermons","url":"/past-sermons"},{"label":"Give","url":"/give"}]'></div>
+
+<div class="wrap">
+  <h1>Page Navigation</h1>
+  <p>A small, tidy navigation bar for section pages. The bar above is a live example &mdash; narrow your browser window to see how it behaves on a phone.</p>
+
+  <a class="cta" href="builder.html">Open the builder &rarr;</a>
+  <p class="demo-note">The builder writes the code for you. You never have to edit a file.</p>
+
+  <h2>What it does differently</h2>
+  <p>On a phone the links turn into one row you can swipe sideways, so every link stays one tap away instead of being hidden behind a dropdown menu. The link for the page you are currently on is underlined automatically.</p>
+
+  <h2>Changing the links later</h2>
+  <p>Open the builder, paste in the code that's already on your page, make your changes, and copy the new code back. Full instructions are in the <a href="https://github.com/lc-camdengoff/site-navigation#readme">README</a>.</p>
+</div>
+
+<script src="nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+/* ==========================================================================
+   Page Navigation - styles
+   --------------------------------------------------------------------------
+   You normally do NOT need to edit this file.
+   Colors, spacing and fonts are controlled by the CSS variables below, and the
+   builder tool sets them for you on the embed code it generates.
+
+   The bar has two layouts. It swaps between them based on how much room the
+   bar itself has - not the size of the screen - so it also looks right inside
+   a narrow column:
+     - wide   : label on the left, links on the right, all on one line
+     - narrow : label on top, links in a row underneath that you swipe sideways
+   ========================================================================== */
+
+.sn-nav {
+  /* ---- Things you can change ---- */
+  --sn-bg: #ececec;                /* bar background */
+  --sn-text: #111111;              /* label + current link color */
+  --sn-accent: #111111;            /* underline under the current page */
+  --sn-muted: rgba(0, 0, 0, 0.55); /* color of the other links */
+  --sn-font: inherit;              /* inherit = use the site's own font */
+  --sn-font-size: 1rem;
+  --sn-title-size: 1.25rem;
+  --sn-height: 4.5rem;             /* bar height in the wide layout */
+  --sn-gap: 2.5rem;                /* space between links */
+  --sn-pad-x: 2rem;                /* space from the left/right edge */
+  --sn-radius: 0px;                /* rounded corners on the bar */
+
+  /* ---- Layout plumbing (leave alone) ---- */
+  box-sizing: border-box;
+  display: block;
+  position: relative;
+  width: 100%;
+  background: var(--sn-bg);
+  border-radius: var(--sn-radius);
+  font-family: var(--sn-font);
+  overflow: hidden;
+}
+
+.sn-nav *,
+.sn-nav *::before,
+.sn-nav *::after {
+  box-sizing: inherit;
+}
+
+/* Sticks the bar to the top of the screen as you scroll. Turned on by the
+   builder's "Stick to top when scrolling" option. */
+.sn-nav[data-sticky="true"] {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+.sn-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sn-gap);
+  min-height: var(--sn-height);
+  padding: 0 var(--sn-pad-x);
+}
+
+/* With no label, the links start from the left instead of the right. */
+.sn-nav[data-has-title="false"] .sn-nav__inner {
+  justify-content: flex-start;
+}
+
+/* ---- The label on the left (e.g. "Watch Online") ---- */
+.sn-nav__title {
+  margin: 0;
+  font-size: var(--sn-title-size);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--sn-text);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+a.sn-nav__title:hover {
+  opacity: 0.7;
+}
+
+/* ---- The links ----
+   The strip can always scroll sideways. That way nothing ever gets cut off,
+   even if someone adds more links than there is room for. */
+.sn-nav__scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;             /* hide the scrollbar (Firefox) */
+  min-width: 0;
+}
+
+.sn-nav__scroller::-webkit-scrollbar {
+  display: none;                     /* hide the scrollbar (Safari/Chrome) */
+}
+
+.sn-nav__list {
+  display: flex;
+  align-items: center;
+  gap: var(--sn-gap);
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sn-nav__link {
+  display: inline-block;
+  padding: 0.35em 0;
+  font-size: var(--sn-font-size);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--sn-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.sn-nav__link:hover,
+.sn-nav__link:focus-visible {
+  color: var(--sn-text);
+}
+
+/* The page the visitor is currently on */
+.sn-nav__link[aria-current="page"] {
+  color: var(--sn-text);
+  border-bottom-color: var(--sn-accent);
+}
+
+.sn-nav__link:focus-visible {
+  outline: 2px solid var(--sn-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Soft fade on the right edge, so it is obvious there is more to swipe to.
+   It only appears while there is more list to scroll. */
+.sn-nav[data-overflow="true"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3rem;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--sn-bg));
+}
+
+/* ==========================================================================
+   Narrow layout (phones, and any column too tight for one line)
+   Every link stays one swipe away - nothing is hidden behind a dropdown.
+   ========================================================================== */
+.sn-nav[data-narrow="true"] {
+  --sn-gap: 1.5rem;
+  --sn-pad-x: 1.25rem;
+  --sn-height: auto;
+}
+
+.sn-nav[data-narrow="true"] .sn-nav__inner {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.sn-nav[data-narrow="true"] .sn-nav__title {
+  padding: 0.9rem var(--sn-pad-x) 0.5rem;
+  font-size: calc(var(--sn-title-size) * 0.95);
+}
+
+.sn-nav[data-narrow="true"] .sn-nav__list {
+  padding: 0 var(--sn-pad-x) 0.9rem;
+}
+
+.sn-nav[data-narrow="true"][data-has-title="false"] .sn-nav__list {
+  padding-top: 0.9rem;
+}
+
+/* Respect the visitor's "reduce motion" setting */
+@media (prefers-reduced-motion: reduce) {
+  .sn-nav__link {
+    transition: none;
+  }
+}

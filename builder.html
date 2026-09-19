@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Navigation Builder</title>
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #5c636e;
+    --line: #e2e5ea;
+    --panel: #ffffff;
+    --page: #f4f5f7;
+    --brand: #1a56db;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    padding: 1.5rem;
+  }
+
+  header h1 { margin: 0 0 0.35rem; font-size: 1.35rem; }
+  header p { margin: 0; color: var(--ink-soft); font-size: 0.95rem; max-width: 60ch; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+    padding: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.05rem;
+  }
+
+  .card .hint {
+    margin: 0 0 1rem;
+    color: var(--ink-soft);
+    font-size: 0.875rem;
+  }
+
+  label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.3rem; }
+
+  input[type="text"], input[type="url"], textarea {
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font: inherit;
+    font-size: 0.925rem;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  input:focus, textarea:focus, button:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+  }
+
+  textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem; line-height: 1.5; }
+
+  .field { margin-bottom: 0.9rem; }
+  .field:last-child { margin-bottom: 0; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  @media (max-width: 560px) { .row-2 { grid-template-columns: 1fr; } }
+
+  /* ---- link rows ---- */
+  .link-row {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.85rem;
+    margin-bottom: 0.75rem;
+    background: #fbfcfd;
+  }
+
+  .link-row__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .link-row__num { font-size: 0.78rem; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.04em; text-transform: uppercase; }
+  .link-row__tools { display: flex; gap: 0.25rem; }
+
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 0.6rem;
+  }
+  .checkbox input { width: 1rem; height: 1rem; margin: 0; }
+  .checkbox label { margin: 0; font-weight: 500; font-size: 0.85rem; }
+
+  button {
+    font: inherit;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 0.45rem 0.8rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  button:hover { background: #f1f3f6; }
+
+  .btn-icon { padding: 0.3rem 0.5rem; line-height: 1; font-size: 0.9rem; }
+  .btn-icon[disabled] { opacity: 0.35; cursor: not-allowed; }
+  .btn-danger:hover { background: #fdeceb; border-color: #f5c2c0; color: #b3261e; }
+
+  .btn-primary {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: #14439f; }
+
+  .btn-block { width: 100%; }
+
+  /* ---- colors ---- */
+  .colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  @media (max-width: 560px) { .colors { grid-template-columns: 1fr; } }
+
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 0.4rem 0.5rem;
+    background: #fff;
+  }
+  .swatch input[type="color"] {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  .swatch code { font-size: 0.78rem; color: var(--ink-soft); }
+
+  /* ---- preview ---- */
+  .preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .toggle button { border: none; border-radius: 0; padding: 0.4rem 0.9rem; font-size: 0.85rem; }
+  .toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+  /* The preview is a real page shown at a real width, then scaled down to fit
+     the panel - so what you see is genuinely what visitors get. */
+  .frame-wrap { position: relative; overflow: hidden; background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
+  iframe { border: 1px solid var(--line); border-radius: 6px; background: #fff; display: block; transform-origin: top left; }
+
+  .output-actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.75rem; flex-wrap: wrap; }
+  .status { font-size: 0.85rem; color: #0a7d3f; font-weight: 600; }
+
+  .warn {
+    margin: 0.85rem 0 0;
+    padding: 0.6rem 0.7rem;
+    border-radius: 7px;
+    background: #fff6e5;
+    border: 1px solid #f3d9a4;
+    color: #7a5200;
+    font-size: 0.85rem;
+  }
+
+  .steps { margin: 0.75rem 0 0; padding-left: 1.15rem; color: var(--ink-soft); font-size: 0.875rem; }
+  .steps li { margin-bottom: 0.3rem; }
+
+  details { margin-top: 0.75rem; }
+  summary { cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+  details p { color: var(--ink-soft); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Page Navigation Builder</h1>
+  <p>Fill in your links below, check the preview, then copy the code at the bottom into a Squarespace Code Block. No coding needed &mdash; come back here any time to change the wording or links.</p>
+</header>
+
+<div class="layout">
+
+  <!-- ==================== LEFT: the settings ==================== -->
+  <div>
+    <section class="card">
+      <h2>Bar label</h2>
+      <p class="hint">The bold text on the left side of the bar. Leave it blank if you don't want one.</p>
+      <div class="row-2">
+        <div class="field">
+          <label for="title">Label text</label>
+          <input type="text" id="title" placeholder="Watch Online">
+        </div>
+        <div class="field">
+          <label for="titleUrl">Label links to (optional)</label>
+          <input type="text" id="titleUrl" placeholder="/watch">
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Links</h2>
+      <p class="hint">One row per link. Use a short path like <code>/worship</code> for pages on your own site, or a full <code>https://</code> address for anywhere else.</p>
+      <div id="links"></div>
+      <button type="button" class="btn-block" id="addLink">+ Add a link</button>
+    </section>
+
+    <section class="card">
+      <h2>Colors</h2>
+      <p class="hint">Click a square to pick a color.</p>
+      <div class="colors">
+        <div>
+          <label for="bg">Bar background</label>
+          <div class="swatch"><input type="color" id="bg" value="#ececec"><code id="bgHex">#ececec</code></div>
+        </div>
+        <div>
+          <label for="text">Text</label>
+          <div class="swatch"><input type="color" id="text" value="#111111"><code id="textHex">#111111</code></div>
+        </div>
+        <div>
+          <label for="accent">Current page underline</label>
+          <div class="swatch"><input type="color" id="accent" value="#111111"><code id="accentHex">#111111</code></div>
+        </div>
+      </div>
+      <p class="warn" id="contrastWarning" hidden>Heads up: this text color is hard to read on this background. Visitors with low vision may not be able to read the links.</p>
+      <div class="checkbox">
+        <input type="checkbox" id="sticky">
+        <label for="sticky">Stick the bar to the top of the screen while scrolling</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Start from existing code</h2>
+      <p class="hint">Already have one of these bars on a page? Paste its code here to load it in and make changes.</p>
+      <div class="field">
+        <textarea id="importBox" rows="4" placeholder="Paste the code from your Squarespace Code Block here"></textarea>
+      </div>
+      <button type="button" id="importBtn">Load this code</button>
+      <span class="status" id="importStatus" hidden>Loaded.</span>
+    </section>
+  </div>
+
+  <!-- ==================== RIGHT: preview + code ==================== -->
+  <div>
+    <section class="card">
+      <div class="preview-bar">
+        <h2 style="margin:0">Preview</h2>
+        <div class="toggle" role="group" aria-label="Preview width">
+          <button type="button" id="sizeDesktop" aria-pressed="true">Desktop</button>
+          <button type="button" id="sizePhone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+      <div class="frame-wrap">
+        <iframe id="preview" src="preview.html" title="Navigation preview" data-size="desktop"></iframe>
+      </div>
+      <p class="hint" style="margin:0.75rem 0 0">On phones the links become one row you can swipe sideways &mdash; nothing is hidden behind a dropdown.</p>
+    </section>
+
+    <section class="card">
+      <h2>Your code</h2>
+      <p class="hint">This updates automatically as you make changes above.</p>
+      <textarea id="output" rows="12" readonly aria-label="Generated embed code"></textarea>
+      <div class="output-actions">
+        <button type="button" class="btn-primary" id="copyBtn">Copy code</button>
+        <span class="status" id="copyStatus" hidden>Copied.</span>
+      </div>
+      <ol class="steps">
+        <li>In Squarespace, edit the page and add a <strong>Code Block</strong> where you want the bar.</li>
+        <li>Delete anything already in the block, then paste this code in.</li>
+        <li>Click <strong>Apply</strong>, then <strong>Save</strong>. Refresh the live page to see it.</li>
+      </ol>
+      <details>
+        <summary>Where do I put it so it shows on every page?</summary>
+        <p>Squarespace &rarr; Settings &rarr; Advanced &rarr; Code Injection &rarr; Header. Anything in there loads on every page of the site.</p>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* If the builder is opened straight off the hard drive we can't guess the
+     web address of nav.css / nav.js, so fall back to the published copies. */
+  var PUBLISHED = "https://lc-camdengoff.github.io/site-navigation/";
+  var BASE = location.protocol === "file:" ? PUBLISHED : new URL(".", location.href).href;
+  var SAVE_KEY = "site-navigation-builder";
+
+  var state = {
+    title: "Watch Online",
+    titleUrl: "",
+    sticky: false,
+    bg: "#ececec",
+    text: "#111111",
+    accent: "#111111",
+    links: [
+      { label: "Worship Services", url: "/worship-services", newTab: false },
+      { label: "Memorial Services", url: "/memorial-services", newTab: false }
+    ]
+  };
+
+  var el = {
+    title: document.getElementById("title"),
+    titleUrl: document.getElementById("titleUrl"),
+    sticky: document.getElementById("sticky"),
+    bg: document.getElementById("bg"),
+    text: document.getElementById("text"),
+    accent: document.getElementById("accent"),
+    links: document.getElementById("links"),
+    output: document.getElementById("output"),
+    preview: document.getElementById("preview")
+  };
+
+  var previewReady = false;
+
+  /* ------------------------------------------------------------------
+     Drawing the list of link rows
+     ------------------------------------------------------------------ */
+  function drawLinks() {
+    el.links.innerHTML = "";
+
+    state.links.forEach(function (link, index) {
+      var row = document.createElement("div");
+      row.className = "link-row";
+
+      var head = document.createElement("div");
+      head.className = "link-row__head";
+      head.innerHTML =
+        '<span class="link-row__num">Link ' + (index + 1) + "</span>" +
+        '<div class="link-row__tools">' +
+          '<button type="button" class="btn-icon" data-act="up" title="Move up" aria-label="Move link up">&uarr;</button>' +
+          '<button type="button" class="btn-icon" data-act="down" title="Move down" aria-label="Move link down">&darr;</button>' +
+          '<button type="button" class="btn-icon btn-danger" data-act="remove" title="Remove" aria-label="Remove link">&times;</button>' +
+        "</div>";
+
+      var fields = document.createElement("div");
+      fields.className = "row-2";
+
+      fields.appendChild(field("Text shown", link.label, "Worship Services", function (value) {
+        link.label = value;
+      }));
+      fields.appendChild(field("Goes to", link.url, "/worship-services", function (value) {
+        link.url = value;
+      }));
+
+      var check = document.createElement("div");
+      check.className = "checkbox";
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.id = "newtab-" + index;
+      box.checked = !!link.newTab;
+      box.addEventListener("change", function () {
+        link.newTab = box.checked;
+        update();
+      });
+      var boxLabel = document.createElement("label");
+      boxLabel.htmlFor = box.id;
+      boxLabel.textContent = "Open in a new tab";
+      check.appendChild(box);
+      check.appendChild(boxLabel);
+
+      head.querySelector('[data-act="up"]').disabled = index === 0;
+      head.querySelector('[data-act="down"]').disabled = index === state.links.length - 1;
+      head.addEventListener("click", function (event) {
+        var action = event.target.getAttribute("data-act");
+        if (!action) return;
+        if (action === "remove") state.links.splice(index, 1);
+        if (action === "up") swap(index, index - 1);
+        if (action === "down") swap(index, index + 1);
+        drawLinks();
+        update();
+      });
+
+      row.appendChild(head);
+      row.appendChild(fields);
+      row.appendChild(check);
+      el.links.appendChild(row);
+    });
+  }
+
+  function field(labelText, value, placeholder, onInput) {
+    var wrap = document.createElement("div");
+    wrap.className = "field";
+
+    var label = document.createElement("label");
+    label.textContent = labelText;
+
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = value;
+    input.placeholder = placeholder;
+    input.addEventListener("input", function () {
+      onInput(input.value);
+      update();
+    });
+
+    label.htmlFor = input.id = "f" + Math.random().toString(36).slice(2, 9);
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function swap(a, b) {
+    var moved = state.links.splice(a, 1)[0];
+    state.links.splice(b, 0, moved);
+  }
+
+  /* ------------------------------------------------------------------
+     Building the code + preview
+     ------------------------------------------------------------------ */
+  function styleString() {
+    return "--sn-bg:" + state.bg +
+      "; --sn-text:" + state.text +
+      "; --sn-accent:" + state.accent +
+      "; --sn-muted:" + fade(state.text, 0.55);
+  }
+
+  /* Turns #111111 into rgba(17,17,17,0.55) so links you're not on look softer
+     on both light and dark bars. */
+  function fade(hex, alpha) {
+    var value = hex.replace("#", "");
+    if (value.length === 3) value = value.replace(/./g, "$&$&");
+    var number = parseInt(value, 16);
+    if (isNaN(number)) return "rgba(0,0,0," + alpha + ")";
+    return "rgba(" + ((number >> 16) & 255) + "," + ((number >> 8) & 255) + "," + (number & 255) + "," + alpha + ")";
+  }
+
+  function cleanLinks() {
+    return state.links
+      .filter(function (link) { return link.label.trim() && link.url.trim(); })
+      .map(function (link) {
+        var item = { label: link.label.trim(), url: link.url.trim() };
+        if (link.newTab) item.newTab = true;
+        return item;
+      });
+  }
+
+  /* Makes text safe to sit inside an HTML attribute. */
+  function attr(value, quote) {
+    var out = String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return quote === "'" ? out.replace(/'/g, "&#39;") : out.replace(/"/g, "&quot;");
+  }
+
+  function buildCode() {
+    var lines = [];
+    lines.push("<!-- Page navigation - built with the Page Navigation Builder -->");
+    lines.push('<link rel="stylesheet" href="' + BASE + 'nav.css">');
+    lines.push("<div data-site-nav");
+
+    if (state.title.trim()) {
+      lines.push('     data-title="' + attr(state.title.trim(), '"') + '"');
+    }
+    if (state.title.trim() && state.titleUrl.trim()) {
+      lines.push('     data-title-url="' + attr(state.titleUrl.trim(), '"') + '"');
+    }
+    if (state.sticky) {
+      lines.push('     data-sticky="true"');
+    }
+    lines.push('     style="' + attr(styleString(), '"') + '"');
+    lines.push("     data-links='" + attr(JSON.stringify(cleanLinks()), "'") + "'></div>");
+    lines.push('<script src="' + BASE + 'nav.js"><\/script>');
+    return lines.join("\n");
+  }
+
+  function sendPreview() {
+    if (!previewReady) return;
+    el.preview.contentWindow.postMessage({
+      type: "site-nav-preview",
+      title: state.title.trim(),
+      titleUrl: state.titleUrl.trim(),
+      sticky: state.sticky,
+      style: styleString(),
+      links: cleanLinks()
+    }, "*");
+  }
+
+  /* Warns if the text would be hard to read on the chosen background.
+     4.5 is the contrast ratio the accessibility guidelines ask for. */
+  function checkContrast() {
+    function channel(value) {
+      value = value / 255;
+      return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    }
+
+    function luminance(hex) {
+      var value = hex.replace("#", "");
+      if (value.length === 3) value = value.replace(/./g, "$&$&");
+      var number = parseInt(value, 16) || 0;
+      return 0.2126 * channel((number >> 16) & 255) +
+             0.7152 * channel((number >> 8) & 255) +
+             0.0722 * channel(number & 255);
+    }
+
+    var a = luminance(state.text);
+    var b = luminance(state.bg);
+    var ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    document.getElementById("contrastWarning").hidden = ratio >= 4.5;
+  }
+
+  function update() {
+    checkContrast();
+    document.getElementById("bgHex").textContent = state.bg;
+    document.getElementById("textHex").textContent = state.text;
+    document.getElementById("accentHex").textContent = state.accent;
+    el.output.value = buildCode();
+    sendPreview();
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    } catch (error) { /* private browsing - just don't save */ }
+  }
+
+  /* ------------------------------------------------------------------
+     Reading settings back out of code that was pasted in
+     ------------------------------------------------------------------ */
+  function importCode(code) {
+    var holder = document.createElement("div");
+    holder.innerHTML = code.replace(/<script[\s\S]*?<\/script>/gi, "");
+    var found = holder.querySelector("[data-site-nav]");
+    if (!found) return false;
+
+    var links;
+    try {
+      links = JSON.parse(found.getAttribute("data-links") || "[]");
+    } catch (error) {
+      return false;
+    }
+    if (!Array.isArray(links)) return false;
+
+    state.title = found.getAttribute("data-title") || "";
+    state.titleUrl = found.getAttribute("data-title-url") || "";
+    state.sticky = found.getAttribute("data-sticky") === "true";
+    state.links = links.map(function (link) {
+      return { label: String(link.label || ""), url: String(link.url || ""), newTab: !!link.newTab };
+    });
+
+    ["bg", "text", "accent"].forEach(function (name) {
+      var match = (found.getAttribute("style") || "").match(new RegExp("--sn-" + name + "\\s*:\\s*(#[0-9a-f]{3,6})", "i"));
+      if (match) state[name] = match[1].toLowerCase();
+    });
+
+    fillForm();
+    return true;
+  }
+
+  function fillForm() {
+    el.title.value = state.title;
+    el.titleUrl.value = state.titleUrl;
+    el.sticky.checked = state.sticky;
+    el.bg.value = state.bg;
+    el.text.value = state.text;
+    el.accent.value = state.accent;
+    drawLinks();
+    update();
+  }
+
+  /* ------------------------------------------------------------------
+     Wiring up the controls
+     ------------------------------------------------------------------ */
+  ["title", "titleUrl"].forEach(function (name) {
+    el[name].addEventListener("input", function () {
+      state[name] = el[name].value;
+      update();
+    });
+  });
+
+  ["bg", "text", "accent"].forEach(function (name) {
+    el[name].addEventListener("input", function () {
+      state[name] = el[name].value;
+      update();
+    });
+  });
+
+  el.sticky.addEventListener("change", function () {
+    state.sticky = el.sticky.checked;
+    update();
+  });
+
+  document.getElementById("addLink").addEventListener("click", function () {
+    state.links.push({ label: "", url: "", newTab: false });
+    drawLinks();
+    update();
+    var inputs = el.links.querySelectorAll(".link-row input[type=text]");
+    if (inputs.length) inputs[inputs.length - 2].focus();
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    el.output.select();
+    navigator.clipboard.writeText(el.output.value).then(function () {
+      flash("copyStatus");
+    }).catch(function () {
+      document.execCommand("copy");
+      flash("copyStatus");
+    });
+  });
+
+  document.getElementById("importBtn").addEventListener("click", function () {
+    var box = document.getElementById("importBox");
+    var status = document.getElementById("importStatus");
+    if (importCode(box.value)) {
+      box.value = "";
+      status.textContent = "Loaded.";
+      status.style.color = "#0a7d3f";
+    } else {
+      status.textContent = "That doesn't look like navigation code.";
+      status.style.color = "#b3261e";
+    }
+    status.hidden = false;
+    setTimeout(function () { status.hidden = true; }, 4000);
+  });
+
+  document.getElementById("sizeDesktop").addEventListener("click", function () { setSize("desktop"); });
+  document.getElementById("sizePhone").addEventListener("click", function () { setSize("phone"); });
+
+  /* Preview sizes, in real pixels. The frame is rendered this big and then
+     scaled down to fit the panel. */
+  var SIZES = { desktop: { w: 1100, h: 200 }, phone: { w: 390, h: 260 } };
+
+  function setSize(size) {
+    el.preview.setAttribute("data-size", size);
+    document.getElementById("sizeDesktop").setAttribute("aria-pressed", String(size === "desktop"));
+    document.getElementById("sizePhone").setAttribute("aria-pressed", String(size === "phone"));
+    fitPreview();
+  }
+
+  function fitPreview() {
+    var wrap = el.preview.parentElement;
+    var size = SIZES[el.preview.getAttribute("data-size")] || SIZES.desktop;
+    var available = wrap.clientWidth - 32; // 1rem of padding on each side
+    var scale = Math.min(1, available / size.w);
+
+    el.preview.style.width = size.w + "px";
+    el.preview.style.height = size.h + "px";
+    el.preview.style.transform = "scale(" + scale + ")";
+    wrap.style.height = Math.round(size.h * scale) + 32 + "px";
+  }
+
+  window.addEventListener("resize", fitPreview);
+
+  function flash(id) {
+    var node = document.getElementById(id);
+    node.hidden = false;
+    setTimeout(function () { node.hidden = true; }, 2000);
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.source === el.preview.contentWindow && event.data && event.data.type === "site-nav-preview-ready") {
+      previewReady = true;
+      sendPreview();
+    }
+  });
+
+  /* Bring back whatever was being worked on last time. */
+  try {
+    var saved = localStorage.getItem(SAVE_KEY);
+    if (saved) {
+      var parsed = JSON.parse(saved);
+      if (parsed && Array.isArray(parsed.links)) state = parsed;
+    }
+  } catch (error) { /* ignore and use the defaults */ }
+
+  fillForm();
+  fitPreview();
+})();
+</script>
+</body>
+</html>
