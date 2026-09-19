@@ -86,6 +86,10 @@
 
   textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem; line-height: 1.5; }
 
+  /* The code box sizes itself to its contents, so it needs no scrollbar and no
+     drag handle. */
+  #output { resize: none; overflow: hidden; }
+
   .field { margin-bottom: 0.9rem; }
   .field:last-child { margin-bottom: 0; }
 
@@ -350,7 +354,7 @@
     <section class="card">
       <h2>Your code</h2>
       <p class="hint">This updates automatically as you make changes above.</p>
-      <textarea id="output" rows="12" readonly aria-label="Generated embed code"></textarea>
+      <textarea id="output" rows="1" readonly aria-label="Generated embed code"></textarea>
       <div class="output-actions">
         <button type="button" class="btn-primary" id="copyBtn">Copy code</button>
         <span class="status" id="copyStatus" hidden>Copied.</span>
@@ -635,6 +639,7 @@
     // The heading level only means anything when the site styles are in use.
     document.getElementById("headingLevelField").hidden = state.type !== "h4p";
     el.output.value = buildCode();
+    fitOutput();
     sendPreview();
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -836,6 +841,20 @@
   }
 
   window.addEventListener("resize", fitPreview);
+
+  /* Grows the code box to exactly fit the code, so there is no empty space
+     under it and no inner scrollbar. */
+  function fitOutput() {
+    // While the box has no width - a hidden tab, a collapsed panel - the text
+    // wraps to an absurd number of lines and we would freeze a silly height
+    // into place. The resize listener below re-runs this once it has a width.
+    if (!el.output.clientWidth) return;
+
+    el.output.style.height = "auto";
+    el.output.style.height = el.output.scrollHeight + "px";
+  }
+
+  window.addEventListener("resize", fitOutput);
 
   function flash(id) {
     var node = document.getElementById(id);
