@@ -81,30 +81,30 @@ stops working**, because the site loads `nav.css` and `nav.js` from that address
 
 ## Type
 
-Every type property defaults to `inherit`, so the bar takes its font, size,
-weight, letter spacing and capitalisation from whatever the page already uses.
-Change the site's typography in Squarespace and the bar follows, with nothing to
-update here.
+The bar sets no fonts of its own. The builder's **Text style** setting picks
+where the type comes from:
 
-The builder's **Text style** setting switches this:
+| Setting | What it renders | Styled by |
+|---|---|---|
+| **Site styles** (default) | Label as a real `<h4>`, each link inside a real `<p>` | Your Squarespace **Site styles → Fonts** settings for Heading 4 and paragraphs |
+| **Plain** | A `<span>` and bare links | Whatever text style surrounds the bar |
+| **Built-in bold** | Same plain markup, plus fixed sizes | The variables below (1rem/700 links, 1.25rem/700 label) |
 
-- **Match my site's fonts and sizes** (default) — writes no type values at all,
-  so everything inherits.
-- **Use the built-in bold style** — writes a fixed 1rem/700 link and
-  1.25rem/700 label, the look in the screenshots.
-
-You can also mix the two. To inherit everything but keep the label bold, add one
-variable to the embed:
+With **Site styles**, changing Heading 4 in Squarespace changes the bar's label,
+with nothing to re-paste here. The heading level is a dropdown in the builder
+(`h1`–`h4`) and lands in the embed as `data-title-tag`:
 
 ```html
-<div data-site-nav style="--sn-title-weight:700" ...></div>
+<div data-site-nav data-title-tag="h4" data-link-tag="p" ...></div>
 ```
 
-Or set it for every bar at once in **Squarespace → Website → Custom CSS**:
+Two things stay ours in every mode: the link colors and the current-page marker.
+Those come from the builder, not the site, so the bar always reads as a bar.
 
-```css
-.sn-nav { --sn-title-weight: 700; }
-```
+**Worth checking once on the live site:** Squarespace applies its heading and
+paragraph fonts inside Code Blocks, which is where this is designed to go. If
+you paste it into **Code Injection → Header** instead, it sits outside that
+content area and may not pick the fonts up — use Plain or Built-in there.
 
 ## Restyling it
 

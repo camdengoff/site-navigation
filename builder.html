@@ -261,10 +261,21 @@
       <div class="field">
         <label for="typeStyle">Text style</label>
         <select id="typeStyle">
-          <option value="site">Match my site's fonts and sizes</option>
+          <option value="h4p">Site styles &mdash; Heading 4 label, paragraph links</option>
+          <option value="inherit">Plain &mdash; match the text around it</option>
           <option value="builtin">Use the built-in bold style</option>
         </select>
-        <p class="hint" style="margin:0.4rem 0 0">Matching your site means the bar uses whatever font, size and weight that page already uses, so it changes with your Squarespace style settings.</p>
+        <p class="hint" style="margin:0.4rem 0 0">With site styles, the label and links are real heading and paragraph text, so they follow the fonts you set in <strong>Squarespace &rarr; Website &rarr; Site styles &rarr; Fonts</strong>. Change them there and this follows.</p>
+
+        <div class="field" id="headingLevelField" style="margin-top:0.9rem">
+          <label for="headingLevel">Label uses</label>
+          <select id="headingLevel">
+            <option value="h1">Heading 1</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+            <option value="h4">Heading 4</option>
+          </select>
+        </div>
       </div>
 
       <div class="field">
@@ -360,7 +371,8 @@
     titleUrl: "",
     sticky: false,
     phone: "dropdown",
-    type: "site",
+    type: "h4p",
+    heading: "h4",
     bg: "#ececec",
     text: "#111111",
     accent: "#111111",
@@ -376,6 +388,7 @@
     sticky: document.getElementById("sticky"),
     phone: document.getElementById("phoneMode"),
     type: document.getElementById("typeStyle"),
+    heading: document.getElementById("headingLevel"),
     bg: document.getElementById("bg"),
     text: document.getElementById("text"),
     accent: document.getElementById("accent"),
@@ -488,8 +501,8 @@
       "; --sn-muted:" + fade(state.text, 0.55) +
       "; --sn-divider:" + fade(state.text, 0.15);
 
-    // Left out entirely when matching the site, because the stylesheet already
-    // defaults every one of these to "inherit".
+    // Left out entirely unless the built-in look is chosen, because the
+    // stylesheet already defaults every one of these to "inherit".
     if (state.type === "builtin") {
       css += "; --sn-font-size:1rem; --sn-font-weight:700; --sn-letter-spacing:0" +
         "; --sn-title-size:1.25rem; --sn-title-weight:700";
@@ -542,6 +555,13 @@
     // Always written out, so the snippet says plainly which phone layout it
     // uses instead of relying on the default.
     lines.push('     data-phone="' + (state.phone === "swipe" ? "swipe" : "dropdown") + '"');
+
+    // These make the label a real heading and each link a real paragraph, so
+    // the site's own font settings style them.
+    if (state.type === "h4p") {
+      lines.push('     data-title-tag="' + state.heading + '"');
+      lines.push('     data-link-tag="p"');
+    }
     lines.push('     style="' + attr(styleString(), '"') + '"');
     lines.push("     data-links='" + attr(JSON.stringify(cleanLinks()), "'") + "'></div>");
     lines.push('<script src="' + BASE + 'nav.js"><\/script>');
@@ -556,6 +576,8 @@
       titleUrl: state.titleUrl.trim(),
       sticky: state.sticky,
       phone: state.phone,
+      titleTag: state.type === "h4p" ? state.heading : "",
+      linkTag: state.type === "h4p" ? "p" : "",
       style: styleString(),
       links: cleanLinks()
     }, "*");
@@ -586,6 +608,8 @@
 
   function update() {
     checkContrast();
+    // The heading level only means anything when the site styles are in use.
+    document.getElementById("headingLevelField").hidden = state.type !== "h4p";
     el.output.value = buildCode();
     sendPreview();
     try {
@@ -614,7 +638,13 @@
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
-    state.type = /--sn-title-size/.test(found.getAttribute("style") || "") ? "builtin" : "site";
+    var titleTag = (found.getAttribute("data-title-tag") || "").toLowerCase();
+    if (/^h[1-4]$/.test(titleTag)) {
+      state.type = "h4p";
+      state.heading = titleTag;
+    } else {
+      state.type = /--sn-title-size/.test(found.getAttribute("style") || "") ? "builtin" : "inherit";
+    }
     state.links = links.map(function (link) {
       return { label: String(link.label || ""), url: String(link.url || ""), newTab: !!link.newTab };
     });
@@ -634,6 +664,7 @@
     el.sticky.checked = state.sticky;
     el.phone.value = state.phone;
     el.type.value = state.type;
+    el.heading.value = state.heading;
     ["bg", "text", "accent"].forEach(function (name) {
       el[name].value = state[name];
       document.getElementById(name + "Hex").value = state[name];
@@ -701,6 +732,11 @@
 
   el.type.addEventListener("change", function () {
     state.type = el.type.value;
+    update();
+  });
+
+  el.heading.addEventListener("change", function () {
+    state.heading = el.heading.value;
     update();
   });
 
@@ -786,7 +822,8 @@
       if (parsed && Array.isArray(parsed.links)) {
         state = parsed;
         if (state.phone !== "swipe") state.phone = "dropdown";
-        if (state.type !== "builtin") state.type = "site";
+        if (["h4p", "inherit", "builtin"].indexOf(state.type) === -1) state.type = "h4p";
+        if (!/^h[1-4]$/.test(state.heading || "")) state.heading = "h4";
       }
     }
   } catch (error) { /* ignore and use the defaults */ }

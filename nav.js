@@ -25,6 +25,10 @@
      point at the list it opens. */
   var counter = 0;
 
+  /* The label can be rendered as a real heading so it picks up the site's own
+     heading style. Anything not in this list falls back to plain text. */
+  var HEADING_TAGS = { h1: true, h2: true, h3: true, h4: true, h5: true, h6: true };
+
   /* Only these link types are allowed. This blocks things like javascript:
      links, which is a common way people try to sneak code onto a page. */
   var SAFE_LINK = /^(https?:\/\/|\/|\.\/|\.\.\/|#|mailto:|tel:)/i;
@@ -107,13 +111,17 @@
     var head = document.createElement("div");
     head.className = "sn-nav__head";
 
+    // data-title-tag="h4" renders the label as a real <h4>, so the site's own
+    // Heading 4 style applies to it. Without it, the label is plain text and
+    // the bar's own type settings apply instead.
+    var titleTag = String(el.getAttribute("data-title-tag") || "").toLowerCase();
+
     if (title) {
-      // A title with a link becomes a link; without one it is just text.
-      var titleEl = document.createElement(isSafe(titleUrl) ? "a" : "span");
-      titleEl.className = "sn-nav__title";
-      titleEl.textContent = title;
-      if (titleEl.tagName === "A") titleEl.href = titleUrl;
-      head.appendChild(titleEl);
+      head.appendChild(
+        HEADING_TAGS[titleTag]
+          ? buildHeadingTitle(titleTag, title, titleUrl)
+          : buildPlainTitle(title, titleUrl)
+      );
     }
 
     var scroller = document.createElement("div");
@@ -124,6 +132,10 @@
     list.className = "sn-nav__list";
 
     var currentLabel = "";
+
+    // data-link-tag="p" wraps each link in a real <p>, so the site's paragraph
+    // style applies to the link text.
+    var wrapInParagraph = el.getAttribute("data-link-tag") === "p";
 
     links.forEach(function (item) {
       if (!isSafe(item.url)) return;
@@ -144,7 +156,16 @@
         currentLabel = item.label;
       }
 
-      li.appendChild(a);
+      if (wrapInParagraph) {
+        var paragraph = document.createElement("p");
+        paragraph.className = "sn-nav__text";
+        paragraph.appendChild(a);
+        li.appendChild(paragraph);
+      } else {
+        a.classList.add("sn-nav__link--plain");
+        li.appendChild(a);
+      }
+
       list.appendChild(li);
     });
 
@@ -159,6 +180,35 @@
     el.appendChild(nav);
 
     watchSize(el, scroller);
+  }
+
+  /* A real heading element, so the site's heading style styles it. We add no
+     type rules of our own here - that is the whole point. */
+  function buildHeadingTitle(tag, title, titleUrl) {
+    var heading = document.createElement(tag);
+    heading.className = "sn-nav__title";
+
+    if (isSafe(titleUrl)) {
+      var link = document.createElement("a");
+      link.className = "sn-nav__title-link";
+      link.href = titleUrl;
+      link.textContent = title;
+      heading.appendChild(link);
+    } else {
+      heading.textContent = title;
+    }
+
+    return heading;
+  }
+
+  /* Plain text instead: a link if it has an address, otherwise a span. This one
+     does take the bar's own font size and weight settings. */
+  function buildPlainTitle(title, titleUrl) {
+    var titleEl = document.createElement(isSafe(titleUrl) ? "a" : "span");
+    titleEl.className = "sn-nav__title sn-nav__title--plain";
+    titleEl.textContent = title;
+    if (titleEl.tagName === "A") titleEl.href = titleUrl;
+    return titleEl;
   }
 
   /* The button that opens the dropdown.

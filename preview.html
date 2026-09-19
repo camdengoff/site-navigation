@@ -12,6 +12,15 @@
 <style>
   html, body { margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
   .preview-body { padding: 1.25rem; color: #9aa0a6; font-size: 0.8rem; }
+
+  /* Stand-ins for a site's own heading and paragraph styles, so the "site
+     styles" option visibly differs here. Your real site's fonts will differ. */
+  h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.01em; }
+  h4 { font-size: 1.25rem; }
+  h3 { font-size: 1.5rem; }
+  h2 { font-size: 1.85rem; }
+  h1 { font-size: 2.2rem; }
+  p { font-size: 0.95rem; }
 </style>
 </head>
 <body>
@@ -36,6 +45,8 @@
       if (config.titleUrl) el.setAttribute("data-title-url", config.titleUrl);
       el.setAttribute("data-sticky", config.sticky ? "true" : "false");
       el.setAttribute("data-phone", config.phone === "swipe" ? "swipe" : "dropdown");
+      if (config.titleTag) el.setAttribute("data-title-tag", config.titleTag);
+      if (config.linkTag) el.setAttribute("data-link-tag", config.linkTag);
       if (config.style) el.setAttribute("style", config.style);
 
       mount.appendChild(el);

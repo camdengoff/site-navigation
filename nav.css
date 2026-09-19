@@ -87,16 +87,29 @@
 /* ---- The label on the left (e.g. "Watch Online") ---- */
 .sn-nav__title {
   margin: 0;
-  font-size: var(--sn-title-size);
-  font-weight: var(--sn-title-weight);
-  letter-spacing: var(--sn-letter-spacing);
-  text-transform: var(--sn-text-transform);
   color: var(--sn-text);
   white-space: nowrap;
   text-decoration: none;
 }
 
-a.sn-nav__title:hover {
+/* Type is only forced on the plain version. When the label is a real heading
+   (data-title-tag="h4") we deliberately set no type rules, so the site's own
+   heading style comes through untouched. */
+.sn-nav__title--plain {
+  font-size: var(--sn-title-size);
+  font-weight: var(--sn-title-weight);
+  letter-spacing: var(--sn-letter-spacing);
+  text-transform: var(--sn-text-transform);
+}
+
+/* A link inside a heading label. */
+.sn-nav__title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.sn-nav__title:hover,
+.sn-nav__title-link:hover {
   opacity: 0.7;
 }
 
@@ -125,19 +138,29 @@ a.sn-nav__title:hover {
   list-style: none;
 }
 
+/* The paragraph wrapper around a link. Its only job is to carry the site's
+   paragraph style, so it must not add space of its own. */
+.sn-nav__text {
+  margin: 0;
+}
+
 .sn-nav__link {
   display: inline-block;
   padding: 0.35em 0;
-  font-size: var(--sn-font-size);
-  font-weight: var(--sn-font-weight);
-  letter-spacing: var(--sn-letter-spacing);
-  text-transform: var(--sn-text-transform);
   line-height: 1.2;
   color: var(--sn-muted);
   text-decoration: none;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
   transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+/* As with the label: only the plain version takes our type settings. */
+.sn-nav__link--plain {
+  font-size: var(--sn-font-size);
+  font-weight: var(--sn-font-weight);
+  letter-spacing: var(--sn-letter-spacing);
+  text-transform: var(--sn-text-transform);
 }
 
 .sn-nav__link:hover,
@@ -284,6 +307,7 @@ a.sn-nav__title:hover {
 
 /* Big tap targets, and the underline becomes a bar down the left instead. */
 .sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__link {
+  display: block;               /* so the whole row is tappable, not just the words */
   padding: 0.75rem var(--sn-pad-x);
   border-bottom: 0;
 }
