@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Squarespace markup fixture</title>
+<link rel="stylesheet" href="../nav.css">
+</head>
+<body class="">
+
+<!-- Case 1: the no-code route. A marker Code Block, and the label and links in
+     a text block below it, wrapped the way Squarespace 7.1 wraps them. -->
+<section id="case-native" data-section-id="abc123" class="page-section">
+  <div class="content-wrapper"><div class="content"><div class="sqs-layout">
+    <div class="row"><div class="col">
+
+      <div class="sqs-block code-block" data-block-type="23">
+        <div class="sqs-block-content"><div data-site-nav></div></div>
+      </div>
+
+      <div class="sqs-block html-block" data-block-type="2">
+        <div class="sqs-block-content">
+          <h4>Watch Online</h4>
+          <ul>
+            <li><a href="/worship-services">Worship Services</a></li>
+            <li><a href="/memorial-services">Memorial Services</a></li>
+            <li><a href="https://example.org/give" target="_blank">Give</a></li>
+            <li><a href="javascript:alert(1)">Bad link</a></li>
+          </ul>
+        </div>
+      </div>
+
+    </div></div>
+  </div></div></div>
+</section>
+
+<!-- Case 2: the code-block route, unchanged from before. -->
+<section id="case-attrs" data-section-id="def456" class="page-section">
+  <div class="sqs-layout"><div class="sqs-block code-block"><div class="sqs-block-content">
+    <div data-site-nav
+         data-title="Give"
+         data-links='[{"label":"One Time","url":"/one-time"},{"label":"Recurring","url":"/recurring"}]'></div>
+  </div></div></div>
+</section>
+
+<!-- Case 3: a section title and a button that must NOT be swallowed as the
+     bar's label or links. Only the block holding the list may be touched. -->
+<section id="case-bystanders" data-section-id="ghi789" class="page-section">
+  <div class="sqs-layout">
+    <div class="sqs-block html-block" id="unrelated-heading">
+      <div class="sqs-block-content"><h2>Our Ministries</h2></div>
+    </div>
+    <div class="sqs-block code-block"><div class="sqs-block-content">
+      <div data-site-nav></div>
+    </div></div>
+    <div class="sqs-block html-block" id="the-list">
+      <div class="sqs-block-content">
+        <h4>Ministries</h4>
+        <ul><li><a href="/youth">Youth</a></li><li><a href="/music">Music</a></li></ul>
+      </div>
+    </div>
+    <div class="sqs-block button-block" id="unrelated-button">
+      <div class="sqs-block-content"><a href="/donate">Donate now</a></div>
+    </div>
+  </div>
+</section>
+
+<script src="../nav.js"></script>
+</body>
+</html>

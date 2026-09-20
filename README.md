@@ -5,8 +5,17 @@ links that sits under the main header on pages like *Watch Online*.
 
 It replaces the usual setup of text blocks, text links, and a separate dropdown
 that only shows on phones. Here, one block handles both, and **the links are not
-written into the code** — they live in a short list that a builder tool writes
-for you.
+written into the code** — on a Squarespace site they're an ordinary text block
+that anyone can edit, and the bar is built from it when the page loads.
+
+There are two ways to install it:
+
+- **[Self-contained](docs/SQUARESPACE-INSTALL.md)** — the site carries its own
+  copy of the code. Nothing loads from this project, so nothing here can break a
+  live site. **This is the one to use for a client.**
+- **Linked** — each page loads `nav.css` and `nav.js` from GitHub Pages. Fine
+  for a demo or your own site; it makes the site depend on this repo staying
+  exactly where it is.
 
 **[Open the builder →](https://camdengoff.github.io/site-navigation/builder.html)**
 &nbsp;·&nbsp;
@@ -38,25 +47,46 @@ Either way it's one Code Block. There's no separate mobile menu to keep in sync.
 
 ---
 
+## Where the links come from
+
+The engine takes them from whichever of these it finds, in this order:
+
+| | Looks like | Who edits it |
+|---|---|---|
+| **A text block** | `<div data-site-nav></div>`, with a heading and a bulleted list of links in a text block below it | Anyone. It's normal Squarespace text, with the native link picker. |
+| **The code block** | `<div data-site-nav data-title="…" data-links='[…]'></div>` | Whoever has the builder. Needed for per-page colors. |
+| **A shared file** | `<div data-site-nav data-source="…/links.json">` | Whoever can edit that file. See the bottom of this page. |
+
+The text-block route is what makes this handoff-able: the person maintaining the
+site edits a list of links, not code. Because the label is a real heading and the
+links are real linked text, the bar comes out matching the site's own type.
+
 ## Adding it to a page
 
-1. Open the [builder](https://camdengoff.github.io/site-navigation/builder.html).
+**Self-contained install** — do the [one-time setup](docs/SQUARESPACE-INSTALL.md)
+once, then every page is **Add Section → Saved → Page navigation**, and the links
+are edited as ordinary text. Day-to-day instructions to hand over are in
+[HANDOFF.md](docs/HANDOFF.md).
+
+**Linked install:**
+
+1. Open the [builder](https://camdengoff.github.io/site-navigation/builder.html)
+   and set **How it's installed** to *Linked to GitHub Pages*.
 2. Type in your label, links, and colors. Watch the preview.
 3. Click **Copy code**.
 4. In Squarespace, edit the page → add a **Code Block** where you want the bar.
 5. Paste the code in, click **Apply**, then **Save**.
 
-To put the same bar on *every* page instead, paste the code into
-**Settings → Advanced → Code Injection → Header**.
-
 ## Changing the links later
+
+With the self-contained install, you edit the text on the page — that's it.
+
+With the linked install, or any bar built from a code block:
 
 1. In Squarespace, open the Code Block and copy everything in it.
 2. Open the builder and paste it into the **Start from existing code** box, then
-   click **Load this code**.
+   click **Load this code**. It works out which install the code came from.
 3. Make your changes and copy the new code back into the Code Block.
-
-That's the whole workflow. Nobody needs to read or edit a file in this repo.
 
 ---
 
@@ -66,16 +96,36 @@ That's the whole workflow. Nobody needs to read or edit a file in this repo.
 |---|---|
 | `builder.html` | The form that writes the code. This is the thing people use. |
 | `nav.css` | How the bar looks. All colors and spacing are CSS variables at the top. |
-| `nav.js` | Builds the bar from the links in the embed code. |
+| `nav.js` | Builds the bar, from a code block or from a text block on the page. |
+| `build.js` | Minifies the two files above into the paste-in blocks in `dist/`. |
+| `dist/` | The built install files. Committed, so you don't need to build to use them. |
+| `test/` | Checks the engine against realistic Squarespace markup. `npm test`. |
 | `index.html` | The live demo / landing page. |
 | `preview.html` | Used by the builder to show the live preview. Not embedded on your site. |
 | `example-links.json` | Sample links file for the shared-list option below. |
-| `docs/HANDOFF.md` | One-page instructions to give to whoever maintains this next. |
+| `docs/SQUARESPACE-INSTALL.md` | The one-time setup, for whoever builds the site. |
+| `docs/HANDOFF.md` | Day-to-day instructions to give to whoever maintains the site. |
 
-The files are served from GitHub Pages at
-`https://camdengoff.github.io/site-navigation/`, which is where the embed
-code points. **If this repo is renamed or made private, every bar on the site
-stops working**, because the site loads `nav.css` and `nav.js` from that address.
+With the **self-contained** install, the site holds its own copy of the code and
+this repo is only the source and the builder — moving or deleting it can't affect
+a live site.
+
+With the **linked** install, pages load `nav.css` and `nav.js` from
+`https://camdengoff.github.io/site-navigation/`. **If this repo is renamed or
+made private, every bar installed that way stops working.**
+
+## Working on it
+
+```
+npm install
+npm run build    # writes dist/
+npm test         # runs the engine against Squarespace-shaped markup
+```
+
+`npm test` needs a Chromium; if the one Playwright wants isn't installed, point
+`CHROMIUM_PATH` at the browser you have. The build refuses to write files if
+minifying dropped anything the install depends on, and the test suite checks the
+minified bundle as well as the source.
 
 ---
 
@@ -107,12 +157,19 @@ site's own weight:
 ```
 
 Two things stay ours in every mode: the link colors and the current-page marker.
-Those come from the builder, not the site, so the bar always reads as a bar.
+Those come from the settings, not the site, so the bar always reads as a bar.
+
+With the self-contained install these are set once, in the settings block at the
+top of the Code Injection paste, instead of on every page.
+
+When the links come from a **text block**, the heading level is whatever heading
+the person actually used, so a label written as a Heading 2 renders as one. The
+`data-title-tag` setting only applies to bars whose links come from a code block.
 
 **Worth checking once on the live site:** Squarespace applies its heading and
-paragraph fonts inside Code Blocks, which is where this is designed to go. If
-you paste it into **Code Injection → Header** instead, it sits outside that
-content area and may not pick the fonts up — use Plain or Built-in there.
+paragraph fonts inside the page content area, which is where the bar is designed
+to go. A bar placed outside it — injected into the header, say — may not pick
+those fonts up, so use Plain or Built-in there.
 
 ## Restyling it
 

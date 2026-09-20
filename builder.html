@@ -238,6 +238,18 @@
   <!-- ==================== LEFT: the settings ==================== -->
   <div>
     <section class="card">
+      <h2>How it's installed</h2>
+      <p class="hint">Set this once. It changes what the code below looks like.</p>
+      <div class="field">
+        <select id="installMode">
+          <option value="squarespace">Squarespace, self-contained &mdash; nothing loads from elsewhere</option>
+          <option value="pages">Linked to GitHub Pages &mdash; the original setup</option>
+        </select>
+      </div>
+      <p class="hint" id="installNote"></p>
+    </section>
+
+    <section class="card">
       <h2>Bar label</h2>
       <p class="hint">The bold text on the left side of the bar. Leave it blank if you don't want one.</p>
       <div class="row-2">
@@ -369,6 +381,54 @@
         <p>Squarespace &rarr; Settings &rarr; Advanced &rarr; Code Injection &rarr; Header. Anything in there loads on every page of the site.</p>
       </details>
     </section>
+
+    <section class="card" id="installCard">
+      <h2>One-time site setup</h2>
+      <p class="hint">
+        Paste these two into the site <strong>once</strong>. They carry the colors and
+        type you picked above, so the per-page code stays down to the label and the
+        links. After this the site needs nothing from anyone else's account.
+      </p>
+
+      <div class="field">
+        <label for="installCss">1. Design &rarr; Custom CSS</label>
+        <textarea id="installCss" rows="3" readonly aria-label="Stylesheet to paste into Custom CSS"></textarea>
+        <div class="output-actions">
+          <button type="button" id="copyCssBtn">Copy stylesheet</button>
+          <span class="status" id="copyCssStatus" hidden>Copied.</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="installHeader">2. Settings &rarr; Advanced &rarr; Code Injection &rarr; Header</label>
+        <textarea id="installHeader" rows="3" readonly aria-label="Script to paste into Code Injection Header"></textarea>
+        <div class="output-actions">
+          <button type="button" id="copyHeaderBtn">Copy script</button>
+          <span class="status" id="copyHeaderStatus" hidden>Copied.</span>
+        </div>
+      </div>
+
+      <details>
+        <summary>Why two places instead of one?</summary>
+        <p>
+          The stylesheet has to go in Custom CSS for the bar's marker to be labelled
+          inside the Squarespace editor &mdash; Squarespace does not apply injected
+          styles there. Putting both in Code Injection works too; you just lose that
+          label. <code>dist/site-nav.all-in-one.html</code> is that single-paste version.
+        </p>
+      </details>
+
+      <details>
+        <summary>Turning the bar on for a page</summary>
+        <p>
+          Add a <strong>Code Block</strong> with the code above, then a
+          <strong>text block</strong> directly under it holding the label as a heading
+          and the links as a bulleted list. Save the section as a
+          <strong>Saved Section</strong> and it is one click on every other page.
+          No block, no bar &mdash; so pages are off until you add it.
+        </p>
+      </details>
+    </section>
   </div>
 </div>
 
@@ -383,6 +443,7 @@
   var SAVE_KEY = "site-navigation-builder";
 
   var state = {
+    install: "squarespace",
     title: "Watch Online",
     titleUrl: "",
     sticky: false,
@@ -414,7 +475,12 @@
     accent: document.getElementById("accent"),
     links: document.getElementById("links"),
     output: document.getElementById("output"),
-    preview: document.getElementById("preview")
+    preview: document.getElementById("preview"),
+    install: document.getElementById("installMode"),
+    installNote: document.getElementById("installNote"),
+    installCard: document.getElementById("installCard"),
+    installCss: document.getElementById("installCss"),
+    installHeader: document.getElementById("installHeader")
   };
 
   var previewReady = false;
@@ -558,6 +624,13 @@
   }
 
   function buildCode() {
+    // Self-contained mode: the engine, the colors and the type were all put
+    // into the site once, so the per-page block carries nothing but this
+    // page's own label and links. Two short lines instead of twenty.
+    if (state.install === "squarespace") {
+      return buildBlockCode();
+    }
+
     var lines = [];
     lines.push("<!-- Page navigation - built with the Page Navigation Builder -->");
     lines.push('<link rel="stylesheet" href="' + BASE + 'nav.css">');
@@ -592,6 +665,104 @@
     lines.push("     data-links='" + attr(JSON.stringify(cleanLinks()), "'") + "'></div>");
     lines.push('<script src="' + BASE + 'nav.js"><\/script>');
     return lines.join("\n");
+  }
+
+  /* The per-page block for the self-contained install. Only what varies from
+     page to page: the label, and the links. Everything else came from the
+     one-time setup. */
+  function buildBlockCode() {
+    var lines = [];
+    lines.push("<!-- Page navigation. The label and links are in the text block below. -->");
+    lines.push("<div data-site-nav");
+
+    if (state.title.trim()) {
+      lines.push('     data-title="' + attr(state.title.trim(), '"') + '"');
+    }
+    if (state.title.trim() && state.titleUrl.trim()) {
+      lines.push('     data-title-url="' + attr(state.titleUrl.trim(), '"') + '"');
+    }
+
+    var links = cleanLinks();
+    if (links.length) {
+      lines.push("     data-links='" + attr(JSON.stringify(links), "'") + "'></div>");
+    } else {
+      // No links written in, so the engine reads them out of the text block
+      // sitting next to this one. This is the no-code route.
+      lines[lines.length - 1] = "<div data-site-nav></div>";
+    }
+
+    return lines.join("\n");
+  }
+
+  /* The site-wide settings that go in the Header block, holding everything the
+     per-page blocks no longer repeat. */
+  function installConfig() {
+    var defaults = {
+      style: styleString(),
+      phone: state.phone === "swipe" ? "swipe" : "dropdown"
+    };
+    if (state.type === "h4p") {
+      defaults.titleTag = state.heading;
+      defaults.linkTag = "p";
+    }
+    if (state.sticky) defaults.sticky = true;
+    if (state.boldLabel) defaults.boldLabel = true;
+    if (state.boldLinks) defaults.boldLinks = true;
+
+    return "window.SiteNavConfig = {\n  defaults: " +
+      JSON.stringify(defaults, null, 2).replace(/\n/g, "\n  ") +
+      "\n};";
+  }
+
+  /* The engine and stylesheet are fetched rather than pasted in here, so the
+     builder can never hand out a copy that has drifted from the real files. */
+  var engineCache = null;
+
+  function loadEngine() {
+    if (engineCache) return engineCache;
+
+    engineCache = Promise.all([
+      fetch(BASE + "dist/site-nav.custom-css.css").then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      }),
+      fetch(BASE + "dist/site-nav.engine.js").then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+    ]).catch(function (error) {
+      engineCache = null;
+      throw error;
+    });
+
+    return engineCache;
+  }
+
+  function updateInstall() {
+    var squarespace = state.install === "squarespace";
+    el.installCard.hidden = !squarespace;
+    el.installNote.textContent = squarespace
+      ? "The site carries its own copy of the code. Nothing breaks if this project moves or goes away."
+      : "The page loads nav.css and nav.js from " + BASE + " every time someone visits.";
+
+    if (!squarespace) return;
+
+    loadEngine().then(function (parts) {
+      el.installCss.value = parts[0].trim();
+      el.installHeader.value = [
+        "<!-- Page navigation: site-wide settings. Safe to edit. -->",
+        "<script>",
+        installConfig(),
+        "<\/script>",
+        "<script>" + parts[1].trim() + "<\/script>"
+      ].join("\n");
+    }).catch(function () {
+      var message =
+        "Couldn't load the built files. Run `npm install && npm run build`, and open " +
+        "this builder over http rather than from the hard drive.";
+      el.installCss.value = message;
+      el.installHeader.value = message;
+    });
   }
 
   function sendPreview() {
@@ -636,6 +807,7 @@
 
   function update() {
     checkContrast();
+    updateInstall();
     // The heading level only means anything when the site styles are in use.
     document.getElementById("headingLevelField").hidden = state.type !== "h4p";
     el.output.value = buildCode();
@@ -662,6 +834,10 @@
       return false;
     }
     if (!Array.isArray(links)) return false;
+
+    // Code that links out to nav.css/nav.js came from the GitHub Pages setup;
+    // anything else is the self-contained one.
+    state.install = /nav\.(css|js)/.test(code) ? "pages" : "squarespace";
 
     state.title = found.getAttribute("data-title") || "";
     state.titleUrl = found.getAttribute("data-title-url") || "";
@@ -691,6 +867,7 @@
   }
 
   function fillForm() {
+    el.install.value = state.install;
     el.title.value = state.title;
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
@@ -787,6 +964,28 @@
     update();
     var inputs = el.links.querySelectorAll(".link-row input[type=text]");
     if (inputs.length) inputs[inputs.length - 2].focus();
+  });
+
+  el.install.addEventListener("change", function () {
+    state.install = el.install.value === "pages" ? "pages" : "squarespace";
+    update();
+  });
+
+  /* One copier for all three boxes. */
+  [
+    ["copyCssBtn", "installCss", "copyCssStatus"],
+    ["copyHeaderBtn", "installHeader", "copyHeaderStatus"]
+  ].forEach(function (pair) {
+    document.getElementById(pair[0]).addEventListener("click", function () {
+      var box = document.getElementById(pair[1]);
+      box.select();
+      navigator.clipboard.writeText(box.value).then(function () {
+        flash(pair[2]);
+      }).catch(function () {
+        document.execCommand("copy");
+        flash(pair[2]);
+      });
+    });
   });
 
   document.getElementById("copyBtn").addEventListener("click", function () {
