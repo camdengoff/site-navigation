@@ -729,19 +729,32 @@
      builder can never hand out a copy that has drifted from the real files. */
   var engineCache = null;
 
+  function fetchFrom(base, path) {
+    return fetch(base + path).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    });
+  }
+
+  /* BASE only resolves to the right place when this page is served from the
+     project itself (locally, or on GitHub Pages). Paste this builder's HTML
+     into a Squarespace page instead - as this "One-time site setup" step
+     assumes people testing it may do - and BASE points at that Squarespace
+     page instead, where the files don't exist. Falling back to the published
+     copy covers that case without needing BASE to guess where it's running. */
   function loadEngine() {
     if (engineCache) return engineCache;
 
     engineCache = Promise.all([
-      fetch(BASE + "dist/site-nav.custom-css.css").then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.text();
-      }),
-      fetch(BASE + "dist/site-nav.engine.js").then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.text();
-      })
-    ]).catch(function (error) {
+      fetchFrom(BASE, "dist/site-nav.custom-css.css"),
+      fetchFrom(BASE, "dist/site-nav.engine.js")
+    ]).catch(function () {
+      if (BASE === PUBLISHED) throw new Error("not found");
+      return Promise.all([
+        fetchFrom(PUBLISHED, "dist/site-nav.custom-css.css"),
+        fetchFrom(PUBLISHED, "dist/site-nav.engine.js")
+      ]);
+    }).catch(function (error) {
       engineCache = null;
       throw error;
     });
