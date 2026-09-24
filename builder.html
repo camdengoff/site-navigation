@@ -224,6 +224,17 @@
   details { margin-top: 0.75rem; }
   summary { cursor: pointer; font-size: 0.875rem; font-weight: 600; }
   details p { color: var(--ink-soft); font-size: 0.85rem; }
+
+  /* If this whole page is pasted into a Squarespace Code Block so it can be
+     used without running it locally, Squarespace disables the JavaScript
+     that drives it while the page is being edited - so the static markup
+     would otherwise sit there half-broken (dead buttons, a stale "Your code"
+     box). Squarespace does still apply CSS in the editor, so this hides the
+     builder outright rather than showing something that doesn't work. */
+  body.sqs-edit-mode header,
+  body.sqs-edit-mode .layout {
+    display: none !important;
+  }
 </style>
 </head>
 <body>
