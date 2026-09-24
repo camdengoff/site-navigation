@@ -1092,6 +1092,18 @@
     }
   });
 
+  /* preview.html is loaded by a plain relative src, so it resolves next to
+     wherever this page is running. Paste this whole file into a Squarespace
+     Code Block - as the "One-time site setup" step assumes people testing
+     it may do - and that resolves to the Squarespace page instead, where
+     preview.html doesn't exist, so the frame never sends its ready message.
+     Fall back to the published copy so the preview still shows the bar. */
+  setTimeout(function () {
+    if (!previewReady && el.preview.src.indexOf(PUBLISHED) !== 0) {
+      el.preview.src = PUBLISHED + "preview.html";
+    }
+  }, 2000);
+
   /* Bring back whatever was being worked on last time. */
   try {
     var saved = localStorage.getItem(SAVE_KEY);
