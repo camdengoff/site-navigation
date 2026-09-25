@@ -92,6 +92,18 @@
   z-index: -1;
 }
 
+/* Squarespace 7.1's Fluid Engine wraps every section in a .fluid-engine
+   container set to overflow: clip, which otherwise cuts the background off
+   at the section's own edge before it ever reaches the viewport edge -
+   this is the actual blocker in practice, more often than the bar's own
+   ancestors. :has() scopes the override to only sections that contain a
+   full-bleed bar, so nothing else on the site loosens its clipping.
+   !important because Squarespace's own clip is easy to win against
+   otherwise - the same reason the color/bold rules further up need it. */
+.fluid-engine:has([data-full-bleed="true"]) {
+  overflow: visible !important;
+}
+
 .sn-nav__inner {
   display: flex;
   align-items: center;

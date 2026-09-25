@@ -89,16 +89,26 @@ async function main() {
 
   const fullBleed = await page.evaluate(() => {
     const wrapper = document.querySelector("#case-fullbleed");
+    const engine = document.querySelector("#case-fullbleed .fluid-engine");
     const el = document.querySelector("#case-fullbleed [data-site-nav]");
     return {
       wrapperWidth: wrapper.getBoundingClientRect().width,
       barWidth: el.getBoundingClientRect().width,
-      backgroundWidth: parseFloat(getComputedStyle(el, "::before").width)
+      backgroundWidth: parseFloat(getComputedStyle(el, "::before").width),
+      // The width check above only proves the pseudo-element's own intended
+      // size, not whether a clipping ancestor actually lets it show - that's
+      // a paint-time effect getComputedStyle can't see. What overflow
+      // .fluid-engine itself resolves to is the real test: Squarespace ships
+      // it as overflow: clip (set inline here, same as the real site), and
+      // our :has() rule needs to override that back to visible or the
+      // background never reaches past the section's own edge in practice.
+      engineOverflow: getComputedStyle(engine).overflow
     };
   });
   check("fullbleed: wrapper stays narrow", fullBleed.wrapperWidth, 300);
   check("fullbleed: bar itself stays inside the wrapper", fullBleed.barWidth <= 300, true);
   check("fullbleed: background escapes the wrapper", fullBleed.backgroundWidth > 300, true);
+  check("fullbleed: overrides the Fluid Engine section's own clip", fullBleed.engineOverflow, "visible");
 
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
