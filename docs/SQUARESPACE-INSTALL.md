@@ -73,6 +73,15 @@ needs lives in that one block.
   itself is capped to the section's content width - only the background
   moves, the label and links stay where they were. It has the same
   clipping-ancestor caveat as `sticky` above, so check it on the real page.
+- **Squarespace's Fluid Engine editor enforces a minimum height per block**
+  that it can't be dragged below, separately for Desktop and Mobile - so a
+  block sized fine on Desktop can leave a real gap of empty space under the
+  bar on Mobile, with no way to fix it by dragging. The builder's "Let the
+  block shrink past Squarespace's own minimum height" option removes that
+  reserved space in CSS instead. **Only turn it on if the bar is the only
+  block in its section** - the fixed height it removes is defined on the
+  whole section's layout grid, not just this block, so a second block
+  sharing that grid would lose its own sizing too.
 - **Always check the live page, not the editor.** Scripts are off in the
   editor, and Squarespace also hides embedded code from logged-in admins
   sometimes. A private window on the live URL is the honest test.

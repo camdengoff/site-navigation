@@ -104,6 +104,24 @@
   overflow: visible !important;
 }
 
+/* Squarespace's Fluid Engine editor won't let a block be dragged smaller
+   than its own enforced minimum grid-row count, and that minimum can end up
+   taller than the bar's own content - especially on the Mobile breakpoint,
+   which Squarespace sizes independently from Desktop - leaving a visible
+   gap of empty space below the bar that dragging in the editor can't fix.
+   Squarespace bakes that minimum in as fixed-size row tracks on the grid
+   container itself (e.g. six 24px rows), not just on the block's own
+   placement, so removing the block's own height isn't enough - the row
+   tracks have to go too.
+
+   Only safe when the bar is the only block in its Fluid Engine section:
+   with nothing else sharing the grid, those row tracks aren't doing
+   anything for another block that this would break. If you ever add a
+   second block to the same section, turn this off first. */
+.fluid-engine:has([data-shrink-block="true"]) {
+  grid-template-rows: none !important;
+}
+
 .sn-nav__inner {
   display: flex;
   align-items: center;

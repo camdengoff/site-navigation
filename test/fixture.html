@@ -60,6 +60,23 @@
   </div>
 </section>
 
+<!-- Case 4: the Fluid Engine minimum-height problem - a grid explicitly
+     templated to six 24px rows (144px total), the same shape found on a
+     real site, with the bar as the grid's only child. Confirms
+     data-shrink-block actually collapses it instead of just moving the
+     empty space around. -->
+<section id="case-shrink">
+  <div class="fluid-engine" style="display:grid; grid-template-columns:1fr; grid-template-rows: 24px 24px 24px 24px 24px 24px;">
+    <div class="fe-block" style="grid-row:1 / 7; grid-column:1;">
+      <div class="sqs-block code-block"><div class="sqs-block-content">
+        <div data-site-nav
+             data-shrink-block="true"
+             data-links='[{"label":"Test","url":"/test"}]'></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
 <script src="../nav.js"></script>
 </body>
 </html>

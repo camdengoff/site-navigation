@@ -338,6 +338,11 @@
         <label for="fullBleed">Stretch the background edge-to-edge, even from inside a narrower Code Block</label>
       </div>
       <p class="hint" style="margin:0.4rem 0 0">Like sticky, this can fail if the section around the bar clips its own content (Squarespace section wrappers sometimes set <code>overflow: hidden</code>) &mdash; check the real page.</p>
+      <div class="checkbox">
+        <input type="checkbox" id="shrinkBlock">
+        <label for="shrinkBlock">Let the block shrink past Squarespace's own minimum height</label>
+      </div>
+      <p class="hint" style="margin:0.4rem 0 0">Only turn this on if the bar is the <strong>only</strong> thing in its Code Block's section &mdash; Squarespace reserves that minimum height as part of the section's own layout grid, and removing it can affect another block sharing the same section.</p>
     </section>
 
     <section class="card">
@@ -403,6 +408,7 @@
     titleUrl: "",
     sticky: false,
     fullBleed: false,
+    shrinkBlock: false,
     phone: "dropdown",
     type: "h4p",
     heading: "h4",
@@ -422,6 +428,7 @@
     titleUrl: document.getElementById("titleUrl"),
     sticky: document.getElementById("sticky"),
     fullBleed: document.getElementById("fullBleed"),
+    shrinkBlock: document.getElementById("shrinkBlock"),
     phone: document.getElementById("phoneMode"),
     type: document.getElementById("typeStyle"),
     heading: document.getElementById("headingLevel"),
@@ -599,6 +606,9 @@
     if (state.fullBleed) {
       lines.push('     data-full-bleed="true"');
     }
+    if (state.shrinkBlock) {
+      lines.push('     data-shrink-block="true"');
+    }
     // Always written out, so the snippet says plainly which phone layout it
     // uses instead of relying on the default.
     lines.push('     data-phone="' + (state.phone === "swipe" ? "swipe" : "dropdown") + '"');
@@ -677,6 +687,7 @@
       titleUrl: state.titleUrl.trim(),
       sticky: state.sticky,
       fullBleed: state.fullBleed,
+      shrinkBlock: state.shrinkBlock,
       phone: state.phone,
       titleTag: state.type === "h4p" ? state.heading : "",
       linkTag: state.type === "h4p" ? "p" : "",
@@ -742,6 +753,7 @@
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
     state.fullBleed = found.getAttribute("data-full-bleed") === "true";
+    state.shrinkBlock = found.getAttribute("data-shrink-block") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
     state.boldLabel = found.getAttribute("data-bold-label") === "true";
     state.boldLinks = found.getAttribute("data-bold-links") === "true";
@@ -771,6 +783,7 @@
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
     el.fullBleed.checked = state.fullBleed;
+    el.shrinkBlock.checked = state.shrinkBlock;
     el.phone.value = state.phone;
     el.type.value = state.type;
     el.heading.value = state.heading;
@@ -838,6 +851,11 @@
 
   el.fullBleed.addEventListener("change", function () {
     state.fullBleed = el.fullBleed.checked;
+    update();
+  });
+
+  el.shrinkBlock.addEventListener("change", function () {
+    state.shrinkBlock = el.shrinkBlock.checked;
     update();
   });
 
