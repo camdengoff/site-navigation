@@ -334,39 +334,13 @@ a.sn-nav__title:hover,
   }
 }
 
-/* ==========================================================================
-   The no-code route: links typed into a Squarespace text block
-   --------------------------------------------------------------------------
-   With the Squarespace install, the bar is marked by an empty Code Block and
-   the links live beside it in an ordinary text block. nav.js reads that block,
-   then marks it so the rules below can hide it - the bar is now showing the
-   same links, so leaving both would show them twice.
-
-   Every hiding rule below is written against html.sn-js, which nav.js adds to
-   the page as it starts. If the script is ever missing or broken, the class is
-   never added, nothing is hidden, and the page falls back to a plain list of
-   working links rather than an empty gap.
-   ========================================================================== */
-
-html.sn-js [data-sn-source="hidden"] {
-  display: none !important;
-}
-
-/* Hides the block right after the marker before the script has had a chance to
-   run, so the raw list does not flash on screen first. Only the one adjacent
-   block, and never inside the Squarespace editor, where you need to see it to
-   edit it. */
-html.sn-js body:not(.sqs-edit-mode)
-  .sqs-block:has(> .sqs-block-content > [data-site-nav]) + .sqs-block {
-  visibility: hidden;
-}
-
-/* Squarespace switches JavaScript off while you are editing, so the marker
-   Code Block would otherwise be an empty box that is easy to delete by
-   accident. Stylesheets do still apply in the editor, so we label it there.
-   This only works when this file is pasted into Design > Custom CSS. */
+/* Squarespace switches JavaScript off while you are editing, so the whole
+   Code Block - style, script, and the marker div - renders as nothing, which
+   looks exactly like an empty block someone might delete by accident. This
+   stylesheet is pasted inline with everything else in that same block, so it
+   still applies in the editor even though the script does not run there. */
 .sqs-edit-mode [data-site-nav]::before {
-  content: "Navigation bar \2014 the links below become the bar on the live site";
+  content: "Navigation bar";
   display: block;
   padding: 0.75rem 1rem;
   border: 1px dashed rgba(0, 0, 0, 0.3);

@@ -1,112 +1,65 @@
-# Installing this on a Squarespace site
+# Putting this on a Squarespace page
 
-*This is the one-time setup, done by whoever builds the site. It happens once
-per site. After it, nobody needs this repo again — see
-[HANDOFF.md](HANDOFF.md) for the day-to-day instructions to hand over.*
+*Day-to-day instructions to hand over are in [HANDOFF.md](HANDOFF.md) — read
+this one first if you're setting it up for the first time.*
 
-The point of this install is that **the site ends up carrying its own copy of
-the code**. Nothing loads from GitHub, from this project, or from anyone's
-personal account, so nothing here can ever break a client's live site.
+Each page's Code Block carries its own full copy of everything the bar
+needs — styles, script, and that page's own label and links. Nothing loads
+from GitHub, from this project, or from anyone's personal account, so nothing
+here can ever break a client's live site, and there's no site-wide setup step
+to do first.
 
 ---
 
 ## What you need
 
-- A Squarespace plan that includes **Code Blocks** and **Code Injection**.
-  Check this first — the entry-level plans don't, and the whole approach
-  depends on both.
-- The built files. Generate them with:
+- A Squarespace plan that includes **Code Blocks**. That's the only
+  Squarespace feature this depends on — no Code Injection required.
+- The [builder](https://camdengoff.github.io/site-navigation/builder.html),
+  to generate each page's code. It fetches the built engine from `dist/`, so
+  if you're running it locally, build first:
 
   ```
   npm install
   npm run build
   ```
 
-  That writes `dist/`. Or open the [builder](../builder.html), leave
-  **How it's installed** on *Squarespace, self-contained*, set your colors, and
-  copy the two blocks it gives you under **One-time site setup** — they already
-  have your colors in them.
-
 ---
 
-## Step 1 — the stylesheet
+## Adding the bar to a page
 
-Squarespace → **Design → Custom CSS**. Paste in `dist/site-nav.custom-css.css`.
+1. Open the [builder](../builder.html). Fill in the label, links, colors, and
+   layout. Watch the preview update as you go.
+2. Click **Copy code**.
+3. In Squarespace, edit the page and add a **Code Block** where you want the
+   bar.
+4. Delete anything already in the block, then paste the code in.
+5. Click **Apply**, then **Save**.
+6. Open the **live page** to check it (not the editor — see below).
 
-It goes here rather than in Code Injection for one specific reason: Squarespace
-doesn't apply injected styles inside the page editor, but it does apply Custom
-CSS. That's what lets the bar's marker be labelled while someone is editing,
-instead of appearing as an empty box they might delete by accident.
-
-## Step 2 — the script
-
-Squarespace → **Settings → Advanced → Code Injection → Header**. Paste in
-`dist/site-nav.header.html`.
-
-The top of that block is the site-wide settings — colors, phone layout, whether
-the label is a real heading. Edit them here and every bar on the site changes at
-once. The rest is the engine; leave it alone and rebuild instead.
-
-> Prefer one paste instead of two? `dist/site-nav.all-in-one.html` has the
-> stylesheet folded into the Header block. You lose the editor label from
-> Step 1; everything else is identical.
-
-## Step 3 — build the reusable section
-
-On one page, in the editor:
-
-1. Add a **Code Block**, and put exactly this in it:
-
-   ```html
-   <div data-site-nav></div>
-   ```
-
-2. Directly **below** it, add a **text block** with:
-   - the bar's label, styled as a **Heading** (whichever level you want — the
-     bar keeps the level you choose)
-   - the links as a **bulleted list**, one per line, each one linked using
-     Squarespace's normal link editor
-
-3. Save the page and open the live page to check it.
-
-Then hover that section, click the **heart** to save it, and give it a name like
-*Page navigation*. It's now available on every page under
-**Add Section → Saved**.
-
-That's the whole install.
+Repeat this on every page that should have the bar. There's no "turn it on
+for the whole site" step; each page's Code Block is what turns it on for that
+page.
 
 ---
 
 ## How it behaves
 
-**In the editor**, Squarespace switches JavaScript off, so the client sees the
-label and the bulleted list as ordinary editable text, with a dashed box above
-marking what it is. They edit it like any other text on the site — including
-using the native page picker for link targets.
+**In the editor**, Squarespace switches JavaScript off entirely, so the whole
+Code Block — the styles, the script, and the bar — renders as nothing. The
+stylesheet is pasted inline in that same block, and stylesheets still apply
+even when scripts don't, so a small dashed box labelled *Navigation bar*
+shows instead of a blank gap, to stop it being deleted by accident.
 
-**On the live site**, the script reads that list, replaces it with the finished
-bar, and hides the raw list.
+**On the live site**, the script builds the finished bar in the block's
+place.
 
-**Per page**, the bar is off until the section is added. No section, no bar.
-Deleting the section turns it off again.
+**Per page**, the bar is off until its Code Block is added. No block, no bar.
+Deleting the block turns it off again.
 
-**If the script ever fails to load**, nothing is hidden, and the page falls back
-to a plain heading and a working list of links. That's deliberate — the worst
-case is unstyled, not broken or blank.
-
----
-
-## The two ways to supply links
-
-Both work, and the engine detects which is in use:
-
-| | How | Use it when |
-|---|---|---|
-| **Text block** | `<div data-site-nav></div>` plus a list in a text block | Normal. The client never sees code. |
-| **Code block** | `<div data-site-nav data-title="..." data-links='[...]'></div>` | You need per-page colors, or you're generating pages programmatically. Attributes on the block override the site-wide settings. |
-
-The builder writes either one. Its **Start from existing code** box still reads
-a pasted block back in, so the old round-trip workflow is intact.
+**If the script ever fails to load**, the block is simply empty — there's no
+separate content underneath it to fall back to, since everything the bar
+needs lives in that one block.
 
 ---
 
@@ -130,6 +83,9 @@ npm run build
 npm test
 ```
 
-Re-paste the two blocks from `dist/`. Bump `VERSION` in `nav.js` if the change
-matters — a page that somehow ends up with two copies keeps the newer one.
-Per-page blocks don't need touching.
+Every page's Code Block carries its own copy of the old engine, so nothing on
+the live site changes on its own. To pick up the fix, regenerate that page's
+code in the builder (paste the old code into **Start from existing code**
+first, to keep its label/links) and re-paste it. Bump `VERSION` in `nav.js`
+if the change matters enough that a page briefly running two copies at once
+(mid re-paste) should keep the newer one.

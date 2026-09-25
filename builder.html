@@ -249,18 +249,6 @@
   <!-- ==================== LEFT: the settings ==================== -->
   <div>
     <section class="card">
-      <h2>How it's installed</h2>
-      <p class="hint">Set this once. It changes what the code below looks like.</p>
-      <div class="field">
-        <select id="installMode">
-          <option value="squarespace">Squarespace, self-contained &mdash; nothing loads from elsewhere</option>
-          <option value="pages">Linked to GitHub Pages &mdash; the original setup</option>
-        </select>
-      </div>
-      <p class="hint" id="installNote"></p>
-    </section>
-
-    <section class="card">
       <h2>Bar label</h2>
       <p class="hint">The bold text on the left side of the bar. Leave it blank if you don't want one.</p>
       <div class="row-2">
@@ -376,7 +364,7 @@
 
     <section class="card">
       <h2>Your code</h2>
-      <p class="hint">This updates automatically as you make changes above.</p>
+      <p class="hint">This updates automatically as you make changes above. It carries everything this bar needs &mdash; styles, script, and this page's own label and links &mdash; so it doesn't depend on any other setup on the site.</p>
       <textarea id="output" rows="1" readonly aria-label="Generated embed code"></textarea>
       <div class="output-actions">
         <button type="button" class="btn-primary" id="copyBtn">Copy code</button>
@@ -388,56 +376,8 @@
         <li>Click <strong>Apply</strong>, then <strong>Save</strong>. Refresh the live page to see it.</li>
       </ol>
       <details>
-        <summary>Where do I put it so it shows on every page?</summary>
-        <p>Squarespace &rarr; Settings &rarr; Advanced &rarr; Code Injection &rarr; Header. Anything in there loads on every page of the site.</p>
-      </details>
-    </section>
-
-    <section class="card" id="installCard">
-      <h2>One-time site setup</h2>
-      <p class="hint">
-        Paste these two into the site <strong>once</strong>. They carry the colors and
-        type you picked above, so the per-page code stays down to the label and the
-        links. After this the site needs nothing from anyone else's account.
-      </p>
-
-      <div class="field">
-        <label for="installCss">1. Design &rarr; Custom CSS</label>
-        <textarea id="installCss" rows="3" readonly aria-label="Stylesheet to paste into Custom CSS"></textarea>
-        <div class="output-actions">
-          <button type="button" id="copyCssBtn">Copy stylesheet</button>
-          <span class="status" id="copyCssStatus" hidden>Copied.</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="installHeader">2. Settings &rarr; Advanced &rarr; Code Injection &rarr; Header</label>
-        <textarea id="installHeader" rows="3" readonly aria-label="Script to paste into Code Injection Header"></textarea>
-        <div class="output-actions">
-          <button type="button" id="copyHeaderBtn">Copy script</button>
-          <span class="status" id="copyHeaderStatus" hidden>Copied.</span>
-        </div>
-      </div>
-
-      <details>
-        <summary>Why two places instead of one?</summary>
-        <p>
-          The stylesheet has to go in Custom CSS for the bar's marker to be labelled
-          inside the Squarespace editor &mdash; Squarespace does not apply injected
-          styles there. Putting both in Code Injection works too; you just lose that
-          label. <code>dist/site-nav.all-in-one.html</code> is that single-paste version.
-        </p>
-      </details>
-
-      <details>
-        <summary>Turning the bar on for a page</summary>
-        <p>
-          Add a <strong>Code Block</strong> with the code above, then a
-          <strong>text block</strong> directly under it holding the label as a heading
-          and the links as a bulleted list. Save the section as a
-          <strong>Saved Section</strong> and it is one click on every other page.
-          No block, no bar &mdash; so pages are off until you add it.
-        </p>
+        <summary>Adding this to another page</summary>
+        <p>Come back here, change the label/links for that page, and copy a fresh block &mdash; each page carries its own full copy, so there's no shared setup to keep in sync.</p>
       </details>
     </section>
   </div>
@@ -454,7 +394,6 @@
   var SAVE_KEY = "site-navigation-builder";
 
   var state = {
-    install: "squarespace",
     title: "Watch Online",
     titleUrl: "",
     sticky: false,
@@ -486,12 +425,7 @@
     accent: document.getElementById("accent"),
     links: document.getElementById("links"),
     output: document.getElementById("output"),
-    preview: document.getElementById("preview"),
-    install: document.getElementById("installMode"),
-    installNote: document.getElementById("installNote"),
-    installCard: document.getElementById("installCard"),
-    installCss: document.getElementById("installCss"),
-    installHeader: document.getElementById("installHeader")
+    preview: document.getElementById("preview")
   };
 
   var previewReady = false;
@@ -634,17 +568,14 @@
     return quote === "'" ? out.replace(/'/g, "&#39;") : out.replace(/"/g, "&quot;");
   }
 
-  function buildCode() {
-    // Self-contained mode: the engine, the colors and the type were all put
-    // into the site once, so the per-page block carries nothing but this
-    // page's own label and links. Two short lines instead of twenty.
-    if (state.install === "squarespace") {
-      return buildBlockCode();
-    }
-
+  /* Everything a page's bar needs - the stylesheet, the script, and this
+     page's own label/links/colors - folded into one paste. Nothing on the
+     page depends on any other block or any site-wide setup. */
+  function buildCode(parts) {
     var lines = [];
     lines.push("<!-- Page navigation - built with the Page Navigation Builder -->");
-    lines.push('<link rel="stylesheet" href="' + BASE + 'nav.css">');
+    lines.push("<style>" + parts[0].trim() + "</style>");
+    lines.push("<script>" + parts[1].trim() + "<\/script>");
     lines.push("<div data-site-nav");
 
     if (state.title.trim()) {
@@ -674,55 +605,7 @@
     }
     lines.push('     style="' + attr(styleString(), '"') + '"');
     lines.push("     data-links='" + attr(JSON.stringify(cleanLinks()), "'") + "'></div>");
-    lines.push('<script src="' + BASE + 'nav.js"><\/script>');
     return lines.join("\n");
-  }
-
-  /* The per-page block for the self-contained install. Only what varies from
-     page to page: the label, and the links. Everything else came from the
-     one-time setup. */
-  function buildBlockCode() {
-    var lines = [];
-    lines.push("<!-- Page navigation. The label and links are in the text block below. -->");
-    lines.push("<div data-site-nav");
-
-    if (state.title.trim()) {
-      lines.push('     data-title="' + attr(state.title.trim(), '"') + '"');
-    }
-    if (state.title.trim() && state.titleUrl.trim()) {
-      lines.push('     data-title-url="' + attr(state.titleUrl.trim(), '"') + '"');
-    }
-
-    var links = cleanLinks();
-    if (links.length) {
-      lines.push("     data-links='" + attr(JSON.stringify(links), "'") + "'></div>");
-    } else {
-      // No links written in, so the engine reads them out of the text block
-      // sitting next to this one. This is the no-code route.
-      lines[lines.length - 1] = "<div data-site-nav></div>";
-    }
-
-    return lines.join("\n");
-  }
-
-  /* The site-wide settings that go in the Header block, holding everything the
-     per-page blocks no longer repeat. */
-  function installConfig() {
-    var defaults = {
-      style: styleString(),
-      phone: state.phone === "swipe" ? "swipe" : "dropdown"
-    };
-    if (state.type === "h4p") {
-      defaults.titleTag = state.heading;
-      defaults.linkTag = "p";
-    }
-    if (state.sticky) defaults.sticky = true;
-    if (state.boldLabel) defaults.boldLabel = true;
-    if (state.boldLinks) defaults.boldLinks = true;
-
-    return "window.SiteNavConfig = {\n  defaults: " +
-      JSON.stringify(defaults, null, 2).replace(/\n/g, "\n  ") +
-      "\n};";
   }
 
   /* The engine and stylesheet are fetched rather than pasted in here, so the
@@ -737,10 +620,10 @@
   }
 
   /* BASE only resolves to the right place when this page is served from the
-     project itself (locally, or on GitHub Pages). Paste this builder's HTML
-     into a Squarespace page instead - as this "One-time site setup" step
-     assumes people testing it may do - and BASE points at that Squarespace
-     page instead, where the files don't exist. Falling back to the published
+     project itself (locally, or on GitHub Pages). Paste this builder's whole
+     HTML into a Squarespace page instead - to use it without running it
+     locally - and BASE points at that Squarespace page instead, where the
+     files don't exist. Falling back to the published
      copy covers that case without needing BASE to guess where it's running. */
   function loadEngine() {
     if (engineCache) return engineCache;
@@ -762,30 +645,15 @@
     return engineCache;
   }
 
-  function updateInstall() {
-    var squarespace = state.install === "squarespace";
-    el.installCard.hidden = !squarespace;
-    el.installNote.textContent = squarespace
-      ? "The site carries its own copy of the code. Nothing breaks if this project moves or goes away."
-      : "The page loads nav.css and nav.js from " + BASE + " every time someone visits.";
-
-    if (!squarespace) return;
-
+  function refreshOutput() {
     loadEngine().then(function (parts) {
-      el.installCss.value = parts[0].trim();
-      el.installHeader.value = [
-        "<!-- Page navigation: site-wide settings. Safe to edit. -->",
-        "<script>",
-        installConfig(),
-        "<\/script>",
-        "<script>" + parts[1].trim() + "<\/script>"
-      ].join("\n");
+      el.output.value = buildCode(parts);
+      fitOutput();
     }).catch(function () {
-      var message =
+      el.output.value =
         "Couldn't load the built files. Run `npm install && npm run build`, and open " +
         "this builder over http rather than from the hard drive.";
-      el.installCss.value = message;
-      el.installHeader.value = message;
+      fitOutput();
     });
   }
 
@@ -831,11 +699,9 @@
 
   function update() {
     checkContrast();
-    updateInstall();
     // The heading level only means anything when the site styles are in use.
     document.getElementById("headingLevelField").hidden = state.type !== "h4p";
-    el.output.value = buildCode();
-    fitOutput();
+    refreshOutput();
     sendPreview();
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -858,10 +724,6 @@
       return false;
     }
     if (!Array.isArray(links)) return false;
-
-    // Code that links out to nav.css/nav.js came from the GitHub Pages setup;
-    // anything else is the self-contained one.
-    state.install = /nav\.(css|js)/.test(code) ? "pages" : "squarespace";
 
     state.title = found.getAttribute("data-title") || "";
     state.titleUrl = found.getAttribute("data-title-url") || "";
@@ -891,7 +753,6 @@
   }
 
   function fillForm() {
-    el.install.value = state.install;
     el.title.value = state.title;
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
@@ -990,28 +851,6 @@
     if (inputs.length) inputs[inputs.length - 2].focus();
   });
 
-  el.install.addEventListener("change", function () {
-    state.install = el.install.value === "pages" ? "pages" : "squarespace";
-    update();
-  });
-
-  /* One copier for all three boxes. */
-  [
-    ["copyCssBtn", "installCss", "copyCssStatus"],
-    ["copyHeaderBtn", "installHeader", "copyHeaderStatus"]
-  ].forEach(function (pair) {
-    document.getElementById(pair[0]).addEventListener("click", function () {
-      var box = document.getElementById(pair[1]);
-      box.select();
-      navigator.clipboard.writeText(box.value).then(function () {
-        flash(pair[2]);
-      }).catch(function () {
-        document.execCommand("copy");
-        flash(pair[2]);
-      });
-    });
-  });
-
   document.getElementById("copyBtn").addEventListener("click", function () {
     el.output.select();
     navigator.clipboard.writeText(el.output.value).then(function () {
@@ -1094,9 +933,9 @@
 
   /* preview.html is loaded by a plain relative src, so it resolves next to
      wherever this page is running. Paste this whole file into a Squarespace
-     Code Block - as the "One-time site setup" step assumes people testing
-     it may do - and that resolves to the Squarespace page instead, where
-     preview.html doesn't exist, so the frame never sends its ready message.
+     Code Block - to use it without running it locally - and that resolves to
+     the Squarespace page instead, where preview.html doesn't exist, so the
+     frame never sends its ready message.
      Fall back to the published copy so the preview still shows the bar. */
   setTimeout(function () {
     if (!previewReady && el.preview.src.indexOf(PUBLISHED) !== 0) {

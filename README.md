@@ -4,18 +4,14 @@ A small navigation bar for section pages on a Squarespace site — the row of
 links that sits under the main header on pages like *Watch Online*.
 
 It replaces the usual setup of text blocks, text links, and a separate dropdown
-that only shows on phones. Here, one block handles both, and **the links are not
-written into the code** — on a Squarespace site they're an ordinary text block
-that anyone can edit, and the bar is built from it when the page loads.
+that only shows on phones. Here, one block handles both.
 
-There are two ways to install it:
-
-- **[Self-contained](docs/SQUARESPACE-INSTALL.md)** — the site carries its own
-  copy of the code. Nothing loads from this project, so nothing here can break a
-  live site. **This is the one to use for a client.**
-- **Linked** — each page loads `nav.css` and `nav.js` from GitHub Pages. Fine
-  for a demo or your own site; it makes the site depend on this repo staying
-  exactly where it is.
+Fill in the [builder](https://camdengoff.github.io/site-navigation/builder.html),
+and it hands you one snippet — styles, script, and this page's own label and
+links, all in one paste. Put it in a Code Block on the page and nothing else on
+the site needs to change: no site-wide setup, nothing loading from anywhere
+else. Adding it to another page means coming back to the builder and copying a
+fresh one.
 
 **[Open the builder →](https://camdengoff.github.io/site-navigation/builder.html)**
 &nbsp;·&nbsp;
@@ -28,9 +24,9 @@ There are two ways to install it:
 | | Text blocks + dropdown | This |
 |---|---|---|
 | Phone layout | A second, separate menu you maintain by hand | Built in — pick a dropdown or a swipeable row |
-| Changing a link | Edit the text block, then edit the dropdown too | Change it once, in the builder |
+| Changing a link | Edit the text block, then edit the dropdown too | Re-generate the snippet in the builder, paste it over the old one |
 | Current page | Not shown | Marked automatically |
-| Handing it off | Person has to understand the CSS that hides things | Person fills in a form |
+| Setting it up | Hand-written CSS and markup per page | Fill in a form, copy one block |
 
 ### The two phone layouts
 
@@ -49,44 +45,36 @@ Either way it's one Code Block. There's no separate mobile menu to keep in sync.
 
 ## Where the links come from
 
-The engine takes them from whichever of these it finds, in this order:
+Normally, whatever's written into the block's own `data-links` attribute — the
+builder writes this for you:
 
-| | Looks like | Who edits it |
-|---|---|---|
-| **A text block** | `<div data-site-nav></div>`, with a heading and a bulleted list of links in a text block below it | Anyone. It's normal Squarespace text, with the native link picker. |
-| **The code block** | `<div data-site-nav data-title="…" data-links='[…]'></div>` | Whoever has the builder. Needed for per-page colors. |
-| **A shared file** | `<div data-site-nav data-source="…/links.json">` | Whoever can edit that file. See the bottom of this page. |
+```html
+<div data-site-nav data-title="…" data-links='[…]'></div>
+```
 
-The text-block route is what makes this handoff-able: the person maintaining the
-site edits a list of links, not code. Because the label is a real heading and the
-links are real linked text, the bar comes out matching the site's own type.
+Optionally, a shared `.json` file instead, if the same list should update
+several pages at once — see [below](#optional-one-shared-list-for-many-pages).
 
 ## Adding it to a page
 
-**Self-contained install** — do the [one-time setup](docs/SQUARESPACE-INSTALL.md)
-once, then every page is **Add Section → Saved → Page navigation**, and the links
-are edited as ordinary text. Day-to-day instructions to hand over are in
-[HANDOFF.md](docs/HANDOFF.md).
-
-**Linked install:**
-
-1. Open the [builder](https://camdengoff.github.io/site-navigation/builder.html)
-   and set **How it's installed** to *Linked to GitHub Pages*.
+1. Open the [builder](https://camdengoff.github.io/site-navigation/builder.html).
 2. Type in your label, links, and colors. Watch the preview.
 3. Click **Copy code**.
 4. In Squarespace, edit the page → add a **Code Block** where you want the bar.
 5. Paste the code in, click **Apply**, then **Save**.
 
+Each page's block carries everything it needs — the stylesheet, the script, and
+that page's own label and links — so nothing else on the site has to be set up
+first, and nothing breaks if this project moves or goes away. The trade-off is
+that a page's block doesn't update on its own; adding it to another page, or
+changing an existing one, means coming back to the builder each time.
+
 ## Changing the links later
-
-With the self-contained install, you edit the text on the page — that's it.
-
-With the linked install, or any bar built from a code block:
 
 1. In Squarespace, open the Code Block and copy everything in it.
 2. Open the builder and paste it into the **Start from existing code** box, then
-   click **Load this code**. It works out which install the code came from.
-3. Make your changes and copy the new code back into the Code Block.
+   click **Load this code**.
+3. Make your changes and copy the new code back into the same Code Block.
 
 ---
 
@@ -96,23 +84,19 @@ With the linked install, or any bar built from a code block:
 |---|---|
 | `builder.html` | The form that writes the code. This is the thing people use. |
 | `nav.css` | How the bar looks. All colors and spacing are CSS variables at the top. |
-| `nav.js` | Builds the bar, from a code block or from a text block on the page. |
-| `build.js` | Minifies the two files above into the paste-in blocks in `dist/`. |
-| `dist/` | The built install files. Committed, so you don't need to build to use them. |
+| `nav.js` | Builds the bar from the block's own attributes. |
+| `build.js` | Minifies the two files above into `dist/`, for the builder to fetch and fold into each snippet it generates. |
+| `dist/` | The built engine. Committed, so you don't need to build to use the builder. |
 | `test/` | Checks the engine against realistic Squarespace markup. `npm test`. |
 | `index.html` | The live demo / landing page. |
 | `preview.html` | Used by the builder to show the live preview. Not embedded on your site. |
 | `example-links.json` | Sample links file for the shared-list option below. |
-| `docs/SQUARESPACE-INSTALL.md` | The one-time setup, for whoever builds the site. |
+| `docs/SQUARESPACE-INSTALL.md` | Step-by-step for putting a snippet on a page. |
 | `docs/HANDOFF.md` | Day-to-day instructions to give to whoever maintains the site. |
 
-With the **self-contained** install, the site holds its own copy of the code and
-this repo is only the source and the builder — moving or deleting it can't affect
-a live site.
-
-With the **linked** install, pages load `nav.css` and `nav.js` from
-`https://camdengoff.github.io/site-navigation/`. **If this repo is renamed or
-made private, every bar installed that way stops working.**
+Each page's snippet carries its own full copy of the engine, so this repo is
+only ever the source and the builder — moving or deleting it can't affect a
+live site.
 
 ## Working on it
 
@@ -159,13 +143,6 @@ site's own weight:
 Two things stay ours in every mode: the link colors and the current-page marker.
 Those come from the settings, not the site, so the bar always reads as a bar.
 
-With the self-contained install these are set once, in the settings block at the
-top of the Code Injection paste, instead of on every page.
-
-When the links come from a **text block**, the heading level is whatever heading
-the person actually used, so a label written as a Heading 2 renders as one. The
-`data-title-tag` setting only applies to bars whose links come from a code block.
-
 **Worth checking once on the live site:** Squarespace applies its heading and
 paragraph fonts inside the page content area, which is where the bar is designed
 to go. A bar placed outside it — injected into the header, say — may not pick
@@ -208,16 +185,20 @@ wide — not when the screen is. So it also looks right inside a narrow column.
 ## Optional: one shared list for many pages
 
 If the same bar appears on a lot of pages, you can keep the links in one file
-instead of in every Code Block. Point the bar at a `.json` file:
+instead of retyping them into every block. The builder doesn't have a field for
+this, so after copying its code, swap the `data-links='[...]'` attribute for a
+`data-source` pointing at a `.json` file:
 
 ```html
 <div data-site-nav data-title="Watch Online"
      data-source="https://camdengoff.github.io/site-navigation/example-links.json"></div>
 ```
 
-Then editing that one file updates every page at once. The trade-off is that
-editing it means editing a file in this repo, so only set this up if whoever
-maintains the site is comfortable doing that.
+Everything else the builder gave you — the `<style>`, the `<script>`, the rest
+of the attributes — stays as it was; only that one attribute changes. Then
+editing that one file updates every page using it at once. The trade-off is
+that editing it means editing a file in this repo, so only set this up if
+whoever maintains the site is comfortable doing that.
 
 ---
 

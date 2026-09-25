@@ -18,18 +18,13 @@
 (function () {
   "use strict";
 
-  /* Bumped whenever this file changes in a way that matters. The Squarespace
-     install pastes this whole file into the site, so a page can briefly end up
-     with two copies of it - a leftover Code Block and the new site-wide one.
-     The older copy steps aside instead of the two fighting over the same bar. */
+  /* Bumped whenever this file changes in a way that matters. Each page carries
+     its own copy of this script in its own Code Block, so re-pasting an
+     updated block onto a page that briefly still has the old one loaded (e.g.
+     mid-save) can leave two copies running. The older one steps aside instead
+     of the two fighting over the same bar. */
   var VERSION = 2;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
-
-  /* Tells the stylesheet that this script is running. The rules that hide the
-     list of links you typed into Squarespace are all written against this
-     class, so if the script never runs, nothing gets hidden and the page still
-     shows a plain, working list of links instead of an empty space. */
-  document.documentElement.classList.add("sn-js");
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
   var NARROW_WIDTH = 640;
@@ -45,14 +40,6 @@
   /* Only these link types are allowed. This blocks things like javascript:
      links, which is a common way people try to sneak code onto a page. */
   var SAFE_LINK = /^(https?:\/\/|\/|\.\/|\.\.\/|#|mailto:|tel:)/i;
-
-  /* Settings shared by every bar on the site. The Squarespace install writes
-     these once, so the colors and type live in one place instead of being
-     repeated on every page. Anything set on an individual bar still wins. */
-  function siteDefaults() {
-    var config = window.SiteNavConfig;
-    return (config && config.defaults) || {};
-  }
 
   /* Squarespace switches JavaScript off while you are editing a page, so this
      rarely comes up - but the site preview does run scripts, and we leave the
@@ -89,137 +76,8 @@
         });
     }
 
-    // Option C: nothing was written into the code at all, so look for the
-    // links in the page itself - an ordinary Squarespace text block with a
-    // list of links in it. This is the route that lets someone change the bar
-    // without touching any code: they edit the list, we turn it into the bar.
-    var harvested = harvestFromPage(el);
-    if (harvested.links.length) {
-      if (harvested.title && !el.getAttribute("data-title")) {
-        el.setAttribute("data-title", harvested.title);
-      }
-      // These links and label were real site-styled text a moment ago, so they
-      // are rendered back as a real heading and real paragraphs. Without this
-      // the bar would quietly restyle text the person had already set up.
-      if (harvested.titleTag && !el.hasAttribute("data-title-tag")) {
-        el.setAttribute("data-title-tag", harvested.titleTag);
-      }
-      if (!el.hasAttribute("data-link-tag")) {
-        el.setAttribute("data-link-tag", "p");
-      }
-      harvested.sources.forEach(function (block) {
-        // Hidden from here rather than from the stylesheet, so that a script
-        // that fails to run leaves the links on the page.
-        block.setAttribute("data-sn-source", "hidden");
-      });
-      return Promise.resolve(harvested.links);
-    }
-
-    warn(el, "No links were found. Put a list of links in a text block beside this one, or add a data-links attribute.");
+    warn(el, "No links were found. Add a data-links attribute with your links in it.");
     return Promise.resolve([]);
-  }
-
-  /* ---------------------------------------------------------------------
-     Reading the links out of the page (the no-code route)
-     ---------------------------------------------------------------------
-     On a Squarespace page the bar is marked by an empty Code Block, and the
-     links sit next to it in a normal text block, written as a bulleted list.
-     We read that list, hide it, and put the bar in its place. Everything here
-     stays inside the one section the marker is in, and only ever hides the
-     single block the links came from.
-     --------------------------------------------------------------------- */
-
-  /* The Squarespace section the marker sits in, which is as far out as we
-     look. Falling back to the marker's own parent keeps this working on an
-     ordinary web page, which has none of these wrappers. */
-  function sourceScope(el) {
-    var node = el.parentNode;
-    while (node && node.nodeType === 1) {
-      if (node.hasAttribute("data-section-id") ||
-          node.tagName === "SECTION" ||
-          /sqs-layout(\s|$)/.test(node.className)) {
-        return node;
-      }
-      node = node.parentNode;
-    }
-    return el.parentNode;
-  }
-
-  /* The Squarespace block a node belongs to - the thing we hide once its
-     contents have become the bar. Walking all the way up to the scope leaves
-     us with the outermost block wrapper, which is the one to hide. */
-  function owningBlock(node, scope) {
-    var block = null;
-    while (node && node !== scope) {
-      if (node.nodeType === 1 && /sqs-block(\s|$)/.test(node.className)) block = node;
-      node = node.parentNode;
-    }
-    return block;
-  }
-
-  function harvestFromPage(el) {
-    var scope = sourceScope(el);
-    var result = { links: [], title: "", titleTag: "", sources: [] };
-    if (!scope) return result;
-
-    // A real list is what the instructions ask for, and it is unambiguous, so
-    // it wins: buttons and stray links elsewhere in the section are left alone.
-    var lists = scope.querySelectorAll("ul, ol");
-    var list = null;
-    for (var i = 0; i < lists.length; i++) {
-      if (el.contains(lists[i])) continue; // our own markup, on a re-run
-      if (lists[i].querySelector("a[href]")) { list = lists[i]; break; }
-    }
-
-    // No list written as a list, so fall back to any text block that has links
-    // in it. Less tidy, but it means a plain row of links still works.
-    var anchors = [];
-    var container = list;
-    if (list) {
-      anchors = list.querySelectorAll("a[href]");
-    } else {
-      var blocks = scope.querySelectorAll(".html-block");
-      for (var j = 0; j < blocks.length && !anchors.length; j++) {
-        if (el.contains(blocks[j])) continue;
-        var found = blocks[j].querySelectorAll("a[href]");
-        if (found.length) { anchors = found; container = blocks[j]; }
-      }
-    }
-
-    Array.prototype.forEach.call(anchors, function (a) {
-      var label = text(a);
-      var url = a.getAttribute("href");
-      if (!label || !isSafe(url)) return;
-      var item = { label: label, url: url };
-      if (a.target === "_blank") item.newTab = true;
-      result.links.push(item);
-    });
-
-    if (!result.links.length) return result;
-
-    var block = owningBlock(container, scope) || container;
-    result.sources.push(block);
-
-    // The bar's label: a heading in the same block as the links. Deliberately
-    // not the whole section, so we never swallow a section title that belongs
-    // to something else on the page.
-    var headings = block.querySelectorAll("h1, h2, h3, h4");
-    for (var k = 0; k < headings.length; k++) {
-      if (list && list.contains(headings[k])) continue;
-      result.title = text(headings[k]);
-      if (result.title) {
-        // Keep the level that was actually typed in Squarespace, so a label
-        // written as a Heading 2 still renders as one in the bar.
-        result.titleTag = headings[k].tagName.toLowerCase();
-        break;
-      }
-    }
-
-    return result;
-  }
-
-  function text(node) {
-    return (node.textContent || "").replace(/\s+/g, " ").trim();
   }
 
   function parseLinks(text, el) {
@@ -247,8 +105,6 @@
      Step 2: build the bar
      --------------------------------------------------------------------- */
   function render(el, links) {
-    applyDefaults(el);
-
     var title = el.getAttribute("data-title");
     var titleUrl = el.getAttribute("data-title-url");
     // In a tight space the links become a dropdown, unless the embed asks for
@@ -423,31 +279,6 @@
   /* ---------------------------------------------------------------------
      Helpers
      --------------------------------------------------------------------- */
-
-  /* Fills in anything a bar did not say for itself from the site-wide settings.
-     Written back as attributes, so the rest of this file never has to care
-     whether a value came from the page or from the shared settings. */
-  function applyDefaults(el) {
-    var defaults = siteDefaults();
-    var map = {
-      "data-phone": defaults.phone,
-      "data-title-tag": defaults.titleTag,
-      "data-link-tag": defaults.linkTag,
-      "data-sticky": defaults.sticky === true ? "true" : null,
-      "data-bold-label": defaults.boldLabel === true ? "true" : null,
-      "data-bold-links": defaults.boldLinks === true ? "true" : null
-    };
-
-    Object.keys(map).forEach(function (name) {
-      if (map[name] && !el.hasAttribute(name)) el.setAttribute(name, map[name]);
-    });
-
-    // Colors arrive as a style string. Ours goes on first so that anything
-    // already set on this particular bar overrides it.
-    if (defaults.style) {
-      el.setAttribute("style", defaults.style + ";" + (el.getAttribute("style") || ""));
-    }
-  }
 
   function isSafe(url) {
     return typeof url === "string" && SAFE_LINK.test(url.trim());
