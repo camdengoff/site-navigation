@@ -118,7 +118,8 @@ async function main() {
       barHeight: bar.getBoundingClientRect().height
     };
   });
-  // Without the override this fixture's grid is a fixed 6 x 24px = 144px,
+  // Without the override this fixture's grid is 6 x 24px rows + 5 x 11px gaps
+  // = 199px, matching the real site,
   // regardless of the bar's own (much shorter) content - the same gap
   // reported on the real site's Mobile breakpoint. (getComputedStyle's
   // gridTemplateRows isn't a useful thing to assert on here: removing the

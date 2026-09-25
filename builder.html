@@ -625,8 +625,10 @@
      builder can never hand out a copy that has drifted from the real files. */
   var engineCache = null;
 
+  /* no-cache: GitHub Pages lets browsers reuse these for 10 minutes, which
+     can bake an outdated engine into a freshly generated snippet. */
   function fetchFrom(base, path) {
-    return fetch(base + path).then(function (r) {
+    return fetch(base + path, { cache: "no-cache" }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.text();
     });
