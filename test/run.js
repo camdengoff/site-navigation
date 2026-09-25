@@ -110,24 +110,28 @@ async function main() {
   check("fullbleed: background escapes the wrapper", fullBleed.backgroundWidth > 300, true);
   check("fullbleed: overrides the Fluid Engine section's own clip", fullBleed.engineOverflow, "visible");
 
-  const shrink = await page.evaluate(() => {
-    const engine = document.querySelector("#case-shrink .fluid-engine");
-    const bar = document.querySelector("#case-shrink [data-site-nav]");
+  const measure = (id) => {
+    const section = document.querySelector(id);
     return {
-      engineHeight: engine.getBoundingClientRect().height,
-      barHeight: bar.getBoundingClientRect().height
+      sectionHeight: section.getBoundingClientRect().height,
+      engineHeight: section.querySelector(".fluid-engine").getBoundingClientRect().height,
+      barHeight: section.querySelector("[data-site-nav]").getBoundingClientRect().height
     };
-  });
-  // Without the override this fixture's grid is 6 x 24px rows + 5 x 11px gaps
-  // = 199px, matching the real site,
-  // regardless of the bar's own (much shorter) content - the same gap
-  // reported on the real site's Mobile breakpoint. (getComputedStyle's
-  // gridTemplateRows isn't a useful thing to assert on here: removing the
-  // explicit tracks makes the browser report back the resolved implicit
-  // row sizes rather than the literal "none" that was set, even though the
-  // override worked - the height actually collapsing is what matters.)
-  check("shrink: grid collapses close to the bar's own height", shrink.engineHeight < 100, true);
-  check("shrink: not just an empty collapse - the bar still rendered", shrink.barHeight > 20, true);
+  };
+  const shrink = await page.evaluate(measure, "#case-shrink");
+  // Without the override this section is at least 300px tall (its own
+  // min-height), with a 7-row grid plus gaps and bottom padding below the
+  // bar - the white gap reported on the real site. Every one of those has to
+  // go, so the grid should end up the bar's own height, and the section just
+  // that plus its untouched 20px top padding.
+  check("shrink: bar still rendered", shrink.barHeight > 20, true);
+  check("shrink: grid is exactly the bar's height", Math.round(shrink.engineHeight), Math.round(shrink.barHeight));
+  check("shrink: section is the bar plus its top padding only", Math.round(shrink.sectionHeight), Math.round(shrink.barHeight + 20));
+
+  const shared = await page.evaluate(measure, "#case-shared");
+  // 6 x 24px + 5 x 11px = 199px - untouched because another block shares it.
+  check("shrink: left alone when another block shares the section", Math.round(shared.engineHeight), 199);
+  check("shrink: shared section keeps its own min-height", shared.sectionHeight >= 300, true);
 
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
@@ -145,6 +149,11 @@ async function main() {
 
   const barsBuilt = await editing.evaluate(() => document.querySelectorAll(".sn-nav__link").length);
   check("editor: no bars built", barsBuilt, 0);
+
+  // The editor's drag handles expect Squarespace's own row sizing.
+  const editorGrid = await editing.evaluate(() =>
+    document.querySelector("#case-shrink .fluid-engine").getBoundingClientRect().height);
+  check("editor: shrink leaves the grid alone", editorGrid > 200, true);
 
   /* ---- The same fixture, but running the minified files that actually get
          pasted into Squarespace. This is the artifact being shipped, so a
@@ -183,7 +192,7 @@ async function main() {
     check("minified: title read", result.title, "Give");
     check("minified: heading tag kept", result.titleTag, "H4");
     check("minified: links read", result.links, ["One Time", "Recurring"]);
-    check("minified: every bar built", result.bars, 4);
+    check("minified: every bar built", result.bars, 5);
 
     fs.unlinkSync(builtPath);
   } else {

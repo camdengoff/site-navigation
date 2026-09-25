@@ -335,10 +335,10 @@
       </div>
       <p class="hint" style="margin:0.4rem 0 0">The bar's background always reaches the edges of the page on its own, even from inside a narrower Code Block. Like sticky, that can fail if the section around the bar clips its own content (Squarespace section wrappers sometimes set <code>overflow: hidden</code>) &mdash; check the real page.</p>
       <div class="checkbox">
-        <input type="checkbox" id="shrinkBlock">
-        <label for="shrinkBlock">Let the block shrink past Squarespace's own minimum height</label>
+        <input type="checkbox" id="shrinkBlock" checked>
+        <label for="shrinkBlock">Shrink the Code Block to fit the bar (removes the blank space below it)</label>
       </div>
-      <p class="hint" style="margin:0.4rem 0 0">Only turn this on if the bar is the <strong>only</strong> thing in its Code Block's section &mdash; Squarespace reserves that minimum height as part of the whole section's layout grid, and removing it would also affect another block sharing that same section.</p>
+      <p class="hint" style="margin:0.4rem 0 0">Squarespace won't let a Code Block be dragged shorter than its own minimum size, which leaves a white gap under the bar. This removes it on the live page. It only kicks in when the bar is the <strong>only</strong> block in its section &mdash; put the bar in its own section. The editor still shows the gap; check the live page.</p>
     </section>
 
     <section class="card">
@@ -403,7 +403,8 @@
     title: "Watch Online",
     titleUrl: "",
     sticky: false,
-    shrinkBlock: false,
+    shrinkBlock: true,
+    shrinkDefault: 2,
     phone: "dropdown",
     type: "h4p",
     heading: "h4",
@@ -597,9 +598,9 @@
     if (state.sticky) {
       lines.push('     data-sticky="true"');
     }
-    if (state.shrinkBlock) {
-      lines.push('     data-shrink-block="true"');
-    }
+    // Always written out: it's on by default, so leaving it off would read
+    // back as "on" when the code is loaded in again.
+    lines.push('     data-shrink-block="' + (state.shrinkBlock ? "true" : "false") + '"');
     // Always written out, so the snippet says plainly which phone layout it
     // uses instead of relying on the default.
     lines.push('     data-phone="' + (state.phone === "swipe" ? "swipe" : "dropdown") + '"');
@@ -744,7 +745,9 @@
     state.title = found.getAttribute("data-title") || "";
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
-    state.shrinkBlock = found.getAttribute("data-shrink-block") === "true";
+    // On unless the code says otherwise - older code without the attribute
+    // gets the fix when it's loaded in and copied back out.
+    state.shrinkBlock = found.getAttribute("data-shrink-block") !== "false";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
     state.boldLabel = found.getAttribute("data-bold-label") === "true";
     state.boldLinks = found.getAttribute("data-bold-links") === "true";
@@ -976,6 +979,12 @@
         if (state.phone !== "swipe") state.phone = "dropdown";
         if (["h4p", "inherit", "builtin"].indexOf(state.type) === -1) state.type = "h4p";
         if (!/^h[1-4]$/.test(state.heading || "")) state.heading = "h4";
+        // Shrinking the block used to be off by default; switch it on once
+        // for settings saved before it became the default.
+        if (state.shrinkDefault !== 2) {
+          state.shrinkBlock = true;
+          state.shrinkDefault = 2;
+        }
       }
     }
   } catch (error) { /* ignore and use the defaults */ }

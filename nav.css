@@ -104,17 +104,46 @@
    taller than the bar's own content - especially on the Mobile breakpoint,
    which Squarespace sizes independently from Desktop - leaving a visible
    gap of empty space below the bar that dragging in the editor can't fix.
-   Squarespace bakes that minimum in as fixed-size row tracks on the grid
-   container itself (e.g. six 24px rows), not just on the block's own
-   placement, so removing the block's own height isn't enough - the row
-   tracks have to go too.
 
-   Only turn this on when the bar is the only block in its Fluid Engine
-   section: with nothing else sharing the grid, those row tracks aren't
-   doing anything for another block that this would break. Adding a second
-   block to the same section later means turning this back off first. */
-.fluid-engine:has([data-shrink-block="true"]) {
+   That empty space comes from several places at once, and every one of them
+   has to go or a gap is still left behind:
+     - the fixed-size row tracks baked onto the .fluid-engine grid itself
+       (e.g. six 24px rows), and the row gaps between them - even empty
+       auto-sized rows still keep their gaps
+     - the block's own height/min-height, stretched to fill those rows
+     - the section's own minimum height and bottom padding, which Squarespace
+       keeps even after the grid inside it collapses
+
+   Safety: every rule is gated on the bar being the ONLY block in its Fluid
+   Engine grid (:not(:has(.fe-block ~ .fe-block))). A second block in the
+   same section - or any container shared with other blocks - fails that
+   check, and the whole section is left exactly as Squarespace laid it out.
+   That's what lets this be on by default. The top padding is also left
+   alone, so a bar under a transparent header isn't pulled up beneath it.
+
+   Also skipped in the editor (.sqs-edit-mode), where Squarespace's drag
+   handles and grid overlay expect its own row sizing - so the editor still
+   shows the reserved space, and the live page doesn't. */
+body:not(.sqs-edit-mode) .fluid-engine:has([data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)) {
   grid-template-rows: none !important;
+  grid-auto-rows: auto !important;
+  row-gap: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+body:not(.sqs-edit-mode) .fluid-engine:not(:has(.fe-block ~ .fe-block)) > .fe-block:has([data-shrink-block="true"]),
+body:not(.sqs-edit-mode) .fluid-engine:not(:has(.fe-block ~ .fe-block)) > .fe-block:has([data-shrink-block="true"]) .sqs-block,
+body:not(.sqs-edit-mode) .fluid-engine:not(:has(.fe-block ~ .fe-block)) > .fe-block:has([data-shrink-block="true"]) .sqs-block-content {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+body:not(.sqs-edit-mode) .page-section:has(.fluid-engine [data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)),
+body:not(.sqs-edit-mode) .page-section:has(.fluid-engine [data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)) .content-wrapper,
+body:not(.sqs-edit-mode) .page-section:has(.fluid-engine [data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)) .content {
+  min-height: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .sn-nav__inner {
