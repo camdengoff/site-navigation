@@ -339,10 +339,10 @@
       </div>
       <p class="hint" style="margin:0.4rem 0 0">Like sticky, this can fail if the section around the bar clips its own content (Squarespace section wrappers sometimes set <code>overflow: hidden</code>) &mdash; check the real page.</p>
       <div class="checkbox">
-        <input type="checkbox" id="shrinkBlock">
-        <label for="shrinkBlock">Let the block shrink past Squarespace's own minimum height</label>
+        <input type="checkbox" id="fillBlock">
+        <label for="fillBlock">Fill the whole Code Block instead of leaving empty space below the bar</label>
       </div>
-      <p class="hint" style="margin:0.4rem 0 0">Only turn this on if the bar is the <strong>only</strong> thing in its Code Block's section &mdash; Squarespace reserves that minimum height as part of the section's own layout grid, and removing it can affect another block sharing the same section.</p>
+      <p class="hint" style="margin:0.4rem 0 0">Squarespace's editor won't let you drag a block below its own minimum height &mdash; often taller than the bar on the Mobile breakpoint. This doesn't remove that reserved space, it makes the bar's own background fill it instead of leaving a blank gap.</p>
     </section>
 
     <section class="card">
@@ -408,7 +408,7 @@
     titleUrl: "",
     sticky: false,
     fullBleed: false,
-    shrinkBlock: false,
+    fillBlock: false,
     phone: "dropdown",
     type: "h4p",
     heading: "h4",
@@ -428,7 +428,7 @@
     titleUrl: document.getElementById("titleUrl"),
     sticky: document.getElementById("sticky"),
     fullBleed: document.getElementById("fullBleed"),
-    shrinkBlock: document.getElementById("shrinkBlock"),
+    fillBlock: document.getElementById("fillBlock"),
     phone: document.getElementById("phoneMode"),
     type: document.getElementById("typeStyle"),
     heading: document.getElementById("headingLevel"),
@@ -606,8 +606,8 @@
     if (state.fullBleed) {
       lines.push('     data-full-bleed="true"');
     }
-    if (state.shrinkBlock) {
-      lines.push('     data-shrink-block="true"');
+    if (state.fillBlock) {
+      lines.push('     data-fill-block="true"');
     }
     // Always written out, so the snippet says plainly which phone layout it
     // uses instead of relying on the default.
@@ -687,7 +687,7 @@
       titleUrl: state.titleUrl.trim(),
       sticky: state.sticky,
       fullBleed: state.fullBleed,
-      shrinkBlock: state.shrinkBlock,
+      fillBlock: state.fillBlock,
       phone: state.phone,
       titleTag: state.type === "h4p" ? state.heading : "",
       linkTag: state.type === "h4p" ? "p" : "",
@@ -753,7 +753,7 @@
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
     state.fullBleed = found.getAttribute("data-full-bleed") === "true";
-    state.shrinkBlock = found.getAttribute("data-shrink-block") === "true";
+    state.fillBlock = found.getAttribute("data-fill-block") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
     state.boldLabel = found.getAttribute("data-bold-label") === "true";
     state.boldLinks = found.getAttribute("data-bold-links") === "true";
@@ -783,7 +783,7 @@
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
     el.fullBleed.checked = state.fullBleed;
-    el.shrinkBlock.checked = state.shrinkBlock;
+    el.fillBlock.checked = state.fillBlock;
     el.phone.value = state.phone;
     el.type.value = state.type;
     el.heading.value = state.heading;
@@ -854,8 +854,8 @@
     update();
   });
 
-  el.shrinkBlock.addEventListener("change", function () {
-    state.shrinkBlock = el.shrinkBlock.checked;
+  el.fillBlock.addEventListener("change", function () {
+    state.fillBlock = el.fillBlock.checked;
     update();
   });
 

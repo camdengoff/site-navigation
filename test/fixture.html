@@ -62,16 +62,22 @@
 
 <!-- Case 4: the Fluid Engine minimum-height problem - a grid explicitly
      templated to six 24px rows (144px total), the same shape found on a
-     real site, with the bar as the grid's only child. Confirms
-     data-shrink-block actually collapses it instead of just moving the
-     empty space around. -->
-<section id="case-shrink">
+     real site, with the bar as the grid's only child and the full
+     sqs-block > sqs-block-content > sqs-code-container > [data-site-nav]
+     chain a real Code Block actually has. Confirms data-fill-block makes
+     the bar's own background cover that reserved space instead of leaving
+     it blank, without touching .fluid-engine itself (which is shared with
+     the rest of the section, unlike everything below .sqs-block). -->
+<section id="case-fill">
   <div class="fluid-engine" style="display:grid; grid-template-columns:1fr; grid-template-rows: 24px 24px 24px 24px 24px 24px;">
     <div class="fe-block" style="grid-row:1 / 7; grid-column:1;">
-      <div class="sqs-block code-block"><div class="sqs-block-content">
+      <div class="sqs-block code-block" style="height:100%"><div class="sqs-block-content">
+        <div class="sqs-code-container">
         <div data-site-nav
-             data-shrink-block="true"
+             data-fill-block="true"
+             style="--sn-bg:#334455"
              data-links='[{"label":"Test","url":"/test"}]'></div>
+        </div>
       </div></div>
     </div>
   </div>
