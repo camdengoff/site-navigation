@@ -87,6 +87,19 @@ async function main() {
   );
   check("options: hover color overrides to its own picked color", hoverColor, "rgb(0, 0, 255)");
 
+  const fullBleed = await page.evaluate(() => {
+    const wrapper = document.querySelector("#case-fullbleed");
+    const el = document.querySelector("#case-fullbleed [data-site-nav]");
+    return {
+      wrapperWidth: wrapper.getBoundingClientRect().width,
+      barWidth: el.getBoundingClientRect().width,
+      backgroundWidth: parseFloat(getComputedStyle(el, "::before").width)
+    };
+  });
+  check("fullbleed: wrapper stays narrow", fullBleed.wrapperWidth, 300);
+  check("fullbleed: bar itself stays inside the wrapper", fullBleed.barWidth <= 300, true);
+  check("fullbleed: background escapes the wrapper", fullBleed.backgroundWidth > 300, true);
+
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
 
@@ -141,7 +154,7 @@ async function main() {
     check("minified: title read", result.title, "Give");
     check("minified: heading tag kept", result.titleTag, "H4");
     check("minified: links read", result.links, ["One Time", "Recurring"]);
-    check("minified: every bar built", result.bars, 2);
+    check("minified: every bar built", result.bars, 3);
 
     fs.unlinkSync(builtPath);
   } else {

@@ -333,6 +333,11 @@
         <input type="checkbox" id="sticky">
         <label for="sticky">Stick the bar to the top of the screen while scrolling</label>
       </div>
+      <div class="checkbox">
+        <input type="checkbox" id="fullBleed">
+        <label for="fullBleed">Stretch the background edge-to-edge, even from inside a narrower Code Block</label>
+      </div>
+      <p class="hint" style="margin:0.4rem 0 0">Like sticky, this can fail if the section around the bar clips its own content (Squarespace section wrappers sometimes set <code>overflow: hidden</code>) &mdash; check the real page.</p>
     </section>
 
     <section class="card">
@@ -397,6 +402,7 @@
     title: "Watch Online",
     titleUrl: "",
     sticky: false,
+    fullBleed: false,
     phone: "dropdown",
     type: "h4p",
     heading: "h4",
@@ -415,6 +421,7 @@
     title: document.getElementById("title"),
     titleUrl: document.getElementById("titleUrl"),
     sticky: document.getElementById("sticky"),
+    fullBleed: document.getElementById("fullBleed"),
     phone: document.getElementById("phoneMode"),
     type: document.getElementById("typeStyle"),
     heading: document.getElementById("headingLevel"),
@@ -589,6 +596,9 @@
     if (state.sticky) {
       lines.push('     data-sticky="true"');
     }
+    if (state.fullBleed) {
+      lines.push('     data-full-bleed="true"');
+    }
     // Always written out, so the snippet says plainly which phone layout it
     // uses instead of relying on the default.
     lines.push('     data-phone="' + (state.phone === "swipe" ? "swipe" : "dropdown") + '"');
@@ -666,6 +676,7 @@
       title: state.title.trim(),
       titleUrl: state.titleUrl.trim(),
       sticky: state.sticky,
+      fullBleed: state.fullBleed,
       phone: state.phone,
       titleTag: state.type === "h4p" ? state.heading : "",
       linkTag: state.type === "h4p" ? "p" : "",
@@ -730,6 +741,7 @@
     state.title = found.getAttribute("data-title") || "";
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
+    state.fullBleed = found.getAttribute("data-full-bleed") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
     state.boldLabel = found.getAttribute("data-bold-label") === "true";
     state.boldLinks = found.getAttribute("data-bold-links") === "true";
@@ -758,6 +770,7 @@
     el.title.value = state.title;
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
+    el.fullBleed.checked = state.fullBleed;
     el.phone.value = state.phone;
     el.type.value = state.type;
     el.heading.value = state.heading;
@@ -820,6 +833,11 @@
 
   el.sticky.addEventListener("change", function () {
     state.sticky = el.sticky.checked;
+    update();
+  });
+
+  el.fullBleed.addEventListener("change", function () {
+    state.fullBleed = el.fullBleed.checked;
     update();
   });
 

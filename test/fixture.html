@@ -46,6 +46,17 @@
   </div></div></div>
 </section>
 
+<!-- Case 3: full-bleed background, deliberately inside a narrow wrapper -
+     the kind of width a Squarespace section's content column would impose -
+     to check the background actually escapes it. -->
+<section id="case-fullbleed" style="max-width:300px;margin:0 auto;">
+  <div class="sqs-layout"><div class="sqs-block code-block"><div class="sqs-block-content">
+    <div data-site-nav
+         data-full-bleed="true"
+         data-links='[{"label":"Test","url":"/test"}]'></div>
+  </div></div></div>
+</section>
+
 <script src="../nav.js"></script>
 </body>
 </html>

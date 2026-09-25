@@ -68,8 +68,11 @@ needs lives in that one block.
 - **`sticky` probably won't work.** `position: sticky` needs no clipping
   ancestor, and Squarespace section wrappers commonly set `overflow: hidden`.
   Test it where you intend to use it, or leave the option off.
-- **The bar can't go edge-to-edge from inside a Code Block.** It's capped to
-  the section's content width. Full-bleed needs a different placement.
+- **The builder's "Stretch the background edge-to-edge" option** lets the
+  bar's background reach the sides of the page even though the Code Block
+  itself is capped to the section's content width - only the background
+  moves, the label and links stay where they were. It has the same
+  clipping-ancestor caveat as `sticky` above, so check it on the real page.
 - **Always check the live page, not the editor.** Scripts are off in the
   editor, and Squarespace also hides embedded code from logged-in admins
   sometimes. A private window on the live URL is the honest test.

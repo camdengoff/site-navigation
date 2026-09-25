@@ -63,6 +63,35 @@
   z-index: 900;
 }
 
+/* Stretches the bar's background to the edges of the viewport, no matter how
+   narrow the Code Block (or the section around it) makes .sn-nav itself. The
+   label and links stay right where they were - only the background moves -
+   using a pseudo-element sized to 100vw and re-centered on the viewport,
+   painted behind everything else in the bar (z-index: -1).
+
+   Needs overflow: visible here, since the pseudo-element deliberately spills
+   outside this element's own box; the default overflow: hidden above exists
+   to clip rounded corners, which isn't a concern most bars turn on anyway.
+
+   Like position: sticky, this needs the section around the bar to not clip
+   its own content - a Squarespace section wrapper that sets overflow: hidden
+   will still cut the background off at the section's own edge. */
+.sn-nav[data-full-bleed="true"] {
+  overflow: visible;
+}
+
+.sn-nav[data-full-bleed="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: var(--sn-bg);
+  z-index: -1;
+}
+
 .sn-nav__inner {
   display: flex;
   align-items: center;
