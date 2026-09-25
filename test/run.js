@@ -134,7 +134,7 @@ async function main() {
   // phone dropdown still grows the section instead of being cut off.
   await page.setViewportSize({ width: 400, height: 800 });
   await page.click("#case-shrink .sn-nav__toggle");
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await page.waitForTimeout(500); // let the open animation finish
   const opened = await page.evaluate(measure, "#case-shrink");
   check("shrink: open dropdown makes the bar taller", opened.barHeight > shrink.barHeight, true);
   check("shrink: section grows with the open dropdown", Math.round(opened.sectionHeight), Math.round(opened.barHeight));

@@ -23,6 +23,8 @@
   --sn-muted: var(--sn-text);      /* color of the other links - same as the label unless overridden */
   --sn-hover: var(--sn-text);      /* link color on hover/focus */
   --sn-divider: rgba(0, 0, 0, 0.15); /* hairline above the open dropdown */
+  --sn-open-speed: 0.3s;             /* how long the phone dropdown takes to open/close */
+  --sn-open-ease: cubic-bezier(0.2, 0, 0, 1); /* fast start, gentle stop */
   /* Type. "inherit" means "whatever this page already uses", so by default the
      bar picks up the site's own fonts, sizes and weights instead of imposing
      its own. Set any of these to a real value to override the site. */
@@ -275,7 +277,7 @@ a.sn-nav__title:hover,
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: translateY(-25%) rotate(45deg);
-  transition: transform 0.2s ease;
+  transition: transform var(--sn-open-speed) var(--sn-open-ease);
 }
 
 .sn-nav[data-open="true"] .sn-nav__chevron {
@@ -350,21 +352,69 @@ a.sn-nav__title:hover,
   padding: 0.9rem var(--sn-pad-x);
 }
 
+/* Opens by sliding the list's row from 0fr to 1fr - the one way to animate
+   to a height that isn't known ahead of time (however many links there
+   are) without measuring it in script. The links fade and settle into
+   place alongside it. visibility flips only once closing has finished, so
+   closed links still can't be tabbed to or read out by screen readers. */
 .sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__scroller {
-  display: none;
-  border-top: 1px solid var(--sn-divider);
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  visibility: hidden;
+  border-top: 0 solid transparent;
+  transition:
+    grid-template-rows var(--sn-open-speed) var(--sn-open-ease),
+    border-color var(--sn-open-speed) var(--sn-open-ease),
+    border-width var(--sn-open-speed) var(--sn-open-ease),
+    visibility 0s linear var(--sn-open-speed);
 }
 
 .sn-nav[data-narrow="true"][data-phone="dropdown"][data-open="true"] .sn-nav__scroller {
-  display: block;
+  grid-template-rows: 1fr;
+  visibility: visible;
+  border-top-width: 1px;
+  border-top-color: var(--sn-divider);
+  transition:
+    grid-template-rows var(--sn-open-speed) var(--sn-open-ease),
+    border-color var(--sn-open-speed) var(--sn-open-ease),
+    border-width var(--sn-open-speed) var(--sn-open-ease),
+    visibility 0s;
 }
 
+/* No padding on the list itself: padding can't shrink below its own size,
+   so it would stay showing while the row is collapsed to 0. The spacing
+   above and below the links is drawn by ::before/::after instead, which
+   collapse along with everything else. */
 .sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__list {
   flex-direction: column;
   align-items: stretch;
   width: 100%;
+  min-height: 0;
+  overflow: hidden;
   gap: 0;
-  padding: 0.35rem 0 0.6rem;
+  padding: 0;
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  transition:
+    opacity var(--sn-open-speed) var(--sn-open-ease),
+    transform var(--sn-open-speed) var(--sn-open-ease);
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"][data-open="true"] .sn-nav__list {
+  opacity: 1;
+  transform: none;
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__list::before,
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__list::after {
+  content: "";
+  flex: none;
+  height: 0.35rem;
+}
+
+.sn-nav[data-narrow="true"][data-phone="dropdown"] .sn-nav__list::after {
+  height: 0.6rem;
 }
 
 /* Big tap targets, and the underline becomes a bar down the left instead. */
@@ -380,8 +430,11 @@ a.sn-nav__title:hover,
 
 /* Respect the visitor's "reduce motion" setting */
 @media (prefers-reduced-motion: reduce) {
-  .sn-nav__link {
-    transition: none;
+  .sn-nav__link,
+  .sn-nav__chevron,
+  .sn-nav__scroller,
+  .sn-nav__list {
+    transition: none !important;
   }
 }
 
