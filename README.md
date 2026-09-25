@@ -166,6 +166,7 @@ builder already does this with the `style` attribute:
 | `--sn-text` | Label and current-page link color |
 | `--sn-muted` | Color of the links you're not on |
 | `--sn-accent` | Marker on the current page (underline, or a bar in the dropdown) |
+| `--sn-hover` | Link color on hover/focus (defaults to `--sn-text`) |
 | `--sn-divider` | Hairline above the open dropdown |
 | `--sn-font` | Font family |
 | `--sn-font-size` / `--sn-title-size` | Link and label text size |

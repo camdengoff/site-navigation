@@ -154,7 +154,7 @@
   .btn-block { width: 100%; }
 
   /* ---- colors ---- */
-  .colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .colors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
   @media (max-width: 560px) { .colors { grid-template-columns: 1fr; } }
 
   .swatch {
@@ -327,6 +327,10 @@
           <label for="accent">Current page marker</label>
           <div class="swatch"><input type="color" id="accent" value="#111111"><input type="text" class="hex" id="accentHex" value="#111111" spellcheck="false" aria-label="Current page marker hex code"></div>
         </div>
+        <div>
+          <label for="hover">Link color on hover</label>
+          <div class="swatch"><input type="color" id="hover" value="#111111"><input type="text" class="hex" id="hoverHex" value="#111111" spellcheck="false" aria-label="Link hover color hex code"></div>
+        </div>
       </div>
       <p class="warn" id="contrastWarning" hidden>Heads up: this text color is hard to read on this background. Visitors with low vision may not be able to read the links.</p>
       <div class="checkbox">
@@ -405,6 +409,7 @@
     bg: "#ececec",
     text: "#111111",
     accent: "#111111",
+    hover: "#111111",
     links: [
       { label: "Worship Services", url: "/worship-services", newTab: false },
       { label: "Memorial Services", url: "/memorial-services", newTab: false }
@@ -423,6 +428,7 @@
     bg: document.getElementById("bg"),
     text: document.getElementById("text"),
     accent: document.getElementById("accent"),
+    hover: document.getElementById("hover"),
     links: document.getElementById("links"),
     output: document.getElementById("output"),
     preview: document.getElementById("preview")
@@ -529,6 +535,7 @@
     var css = "--sn-bg:" + state.bg +
       "; --sn-text:" + state.text +
       "; --sn-accent:" + state.accent +
+      "; --sn-hover:" + state.hover +
       "; --sn-muted:" + fade(state.text, 0.55) +
       "; --sn-divider:" + fade(state.text, 0.15);
 
@@ -743,7 +750,7 @@
       return { label: String(link.label || ""), url: String(link.url || ""), newTab: !!link.newTab };
     });
 
-    ["bg", "text", "accent"].forEach(function (name) {
+    ["bg", "text", "accent", "hover"].forEach(function (name) {
       var match = (found.getAttribute("style") || "").match(new RegExp("--sn-" + name + "\\s*:\\s*(#[0-9a-f]{3,6})", "i"));
       if (match) state[name] = match[1].toLowerCase();
     });
@@ -761,7 +768,7 @@
     el.heading.value = state.heading;
     el.boldLabel.checked = state.boldLabel;
     el.boldLinks.checked = state.boldLinks;
-    ["bg", "text", "accent"].forEach(function (name) {
+    ["bg", "text", "accent", "hover"].forEach(function (name) {
       el[name].value = state[name];
       document.getElementById(name + "Hex").value = state[name];
     });
@@ -781,7 +788,7 @@
 
   /* Each color has two controls that stay in step: the picker square, and a
      box you can type a hex code into. */
-  ["bg", "text", "accent"].forEach(function (name) {
+  ["bg", "text", "accent", "hover"].forEach(function (name) {
     var picker = el[name];
     var typed = document.getElementById(name + "Hex");
 

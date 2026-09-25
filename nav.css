@@ -21,6 +21,7 @@
   --sn-text: #111111;              /* label + current link color */
   --sn-accent: #111111;            /* underline under the current page */
   --sn-muted: rgba(0, 0, 0, 0.55); /* color of the other links */
+  --sn-hover: var(--sn-text);      /* link color on hover/focus */
   --sn-divider: rgba(0, 0, 0, 0.15); /* hairline above the open dropdown */
   /* Type. "inherit" means "whatever this page already uses", so by default the
      bar picks up the site's own fonts, sizes and weights instead of imposing
@@ -87,7 +88,11 @@
 /* ---- The label on the left (e.g. "Watch Online") ---- */
 .sn-nav__title {
   margin: 0;
-  color: var(--sn-text);
+  /* !important because this can render as a real heading, and a site's own
+     heading color is commonly set with !important itself - without this,
+     that would win and the label would silently pick up the site's color
+     instead of the one actually chosen for the bar. */
+  color: var(--sn-text) !important;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -148,7 +153,11 @@ a.sn-nav__title:hover,
   display: inline-block;
   padding: 0.35em 0;
   line-height: 1.2;
-  color: var(--sn-muted);
+  /* !important for the same reason as the label's color: this can render
+     inside a real paragraph, and a site's own link color is commonly
+     !important itself, which would otherwise win over the color actually
+     chosen for the bar. */
+  color: var(--sn-muted) !important;
   text-decoration: none;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
@@ -157,13 +166,14 @@ a.sn-nav__title:hover,
 
 /* The builder's bold options. These deliberately win over everything else,
    including the site's own heading and paragraph weights, because they are a
-   choice someone made on purpose. */
+   choice someone made on purpose - so !important, for the same reason as the
+   colors above: a real heading/paragraph's own weight can be !important too. */
 .sn-nav[data-bold-label="true"] .sn-nav__title {
-  font-weight: 700;
+  font-weight: 700 !important;
 }
 
 .sn-nav[data-bold-links="true"] .sn-nav__link {
-  font-weight: 700;
+  font-weight: 700 !important;
 }
 
 /* As with the label: only the plain version takes our type settings. */
@@ -176,12 +186,12 @@ a.sn-nav__title:hover,
 
 .sn-nav__link:hover,
 .sn-nav__link:focus-visible {
-  color: var(--sn-text);
+  color: var(--sn-hover) !important;
 }
 
 /* The page the visitor is currently on */
 .sn-nav__link[aria-current="page"] {
-  color: var(--sn-text);
+  color: var(--sn-text) !important;
   border-bottom-color: var(--sn-accent);
 }
 

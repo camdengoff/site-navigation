@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <title>Squarespace markup fixture</title>
+<style>
+  /* Stands in for a real Squarespace site's own generated typography, which
+     commonly sets heading/paragraph color and weight with !important. This is
+     exactly what nav.css's own !important rules need to win against - without
+     them, a real site's styling like this would silently override the bar's
+     chosen colors and bold options. */
+  h4 { color: #ff0000 !important; font-weight: 400 !important; }
+  p { color: #ff0000 !important; }
+</style>
 <link rel="stylesheet" href="../nav.css">
 </head>
 <body class="">
@@ -20,12 +29,15 @@
   </div></div></div>
 </section>
 
-<!-- Case 2: bold text, the swipe phone layout, and a new-tab link, all set
-     directly on the marker the way the builder writes them. -->
+<!-- Case 2: bold text, real heading/paragraph tags (so the page.css rules
+     above actually apply to them), the swipe phone layout, and a new-tab
+     link, all set directly on the marker the way the builder writes them. -->
 <section id="case-options" data-section-id="ghi789" class="page-section">
   <div class="sqs-layout"><div class="sqs-block code-block"><div class="sqs-block-content">
     <div data-site-nav
          data-title="Ministries"
+         data-title-tag="h4"
+         data-link-tag="p"
          data-phone="swipe"
          data-bold-label="true"
          data-bold-links="true"

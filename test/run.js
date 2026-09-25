@@ -64,15 +64,28 @@ async function main() {
         .find((a) => a.textContent === "Music").target,
       phone: el.getAttribute("data-phone"),
       titleBold: getComputedStyle(el.querySelector(".sn-nav__title")).fontWeight,
-      linkBold: getComputedStyle(el.querySelector(".sn-nav__link")).fontWeight
+      linkBold: getComputedStyle(el.querySelector(".sn-nav__link")).fontWeight,
+      // The page's own h4/p rules (see fixture.html) are red and !important -
+      // these must come out as the bar's own default colors, not red.
+      titleColor: getComputedStyle(el.querySelector(".sn-nav__title")).color,
+      linkColor: getComputedStyle(el.querySelector(".sn-nav__link")).color
     };
   });
   check("options: javascript: link dropped", options.linkCount, 2);
   check("options: links read", options.labels, ["Youth", "Music"]);
   check("options: new tab applied", options.newTab, "_blank");
   check("options: phone layout applied", options.phone, "swipe");
-  check("options: bold label applied", options.titleBold, "700");
-  check("options: bold links applied", options.linkBold, "700");
+  check("options: bold label applied despite the page's own h4 weight", options.titleBold, "700");
+  check("options: bold links applied despite the page's own p color", options.linkBold, "700");
+  check("options: title color wins over the page's own h4 color", options.titleColor, "rgb(17, 17, 17)");
+  check("options: link color wins over the page's own p color", options.linkColor, "rgba(0, 0, 0, 0.55)");
+
+  await page.hover("#case-options .sn-nav__link");
+  await page.waitForTimeout(250); // let the color transition finish before reading it
+  const hoverColor = await page.evaluate(() =>
+    getComputedStyle(document.querySelector("#case-options .sn-nav__link")).color
+  );
+  check("options: hover color applied", hoverColor, "rgb(17, 17, 17)");
 
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
