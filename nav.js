@@ -23,7 +23,7 @@
      updated block onto a page that briefly still has the old one loaded (e.g.
      mid-save) can leave two copies running. The older one steps aside instead
      of the two fighting over the same bar. */
-  var VERSION = 2;
+  var VERSION = 3;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
@@ -195,6 +195,57 @@
     el.appendChild(nav);
 
     watchSize(el, scroller);
+    fitSection(el);
+  }
+
+  /* Squarespace won't let a Code Block be dragged shorter than its own
+     minimum (several grid rows), and the section around it adds its own
+     minimum height and padding - together leaving a band of empty space
+     around the bar. This sizes the whole section to the bar instead: every
+     wrapper from the bar up to its section loses its minimum height, fixed
+     height, and padding, and any grid on the way loses its fixed rows and
+     row gaps. Heights become "auto" rather than a measured number, so the
+     section still grows when the phone dropdown opens.
+
+     Done from here rather than in CSS so it doesn't depend on Squarespace's
+     own class names for each wrapper - whatever sits between the bar and its
+     section gets fitted. Scripts don't run in the editor, so the editor
+     keeps Squarespace's own sizing and its drag handles still line up.
+
+     Only when the bar is the only block in its section: the rows and
+     padding being removed belong to the whole section, and another block
+     there would lose its layout. */
+  function fitSection(el) {
+    if (el.getAttribute("data-shrink-block") !== "true") return;
+
+    var section = el.closest("section, .page-section");
+    if (!section) return;
+
+    var blocks = section.querySelectorAll(".sqs-block, .fe-block");
+    for (var i = 0; i < blocks.length; i++) {
+      if (!blocks[i].contains(el)) return;
+    }
+
+    // The first section on a page is often padded down to clear a header
+    // that sits over it - keep that, or the bar would slide under the header.
+    var keepTop = !section.previousElementSibling ||
+      !section.previousElementSibling.matches("section, .page-section");
+
+    for (var node = el.parentElement; node; node = node.parentElement) {
+      var style = node.style;
+      style.setProperty("min-height", "0", "important");
+      style.setProperty("height", "auto", "important");
+      style.setProperty("padding-bottom", "0", "important");
+      if (!keepTop) style.setProperty("padding-top", "0", "important");
+
+      if (/grid/.test(getComputedStyle(node).display)) {
+        style.setProperty("grid-template-rows", "none", "important");
+        style.setProperty("grid-auto-rows", "auto", "important");
+        style.setProperty("row-gap", "0", "important");
+      }
+
+      if (node === section) break;
+    }
   }
 
   /* A real heading element, so the site's heading style styles it. We add no

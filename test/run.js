@@ -120,13 +120,22 @@ async function main() {
   };
   const shrink = await page.evaluate(measure, "#case-shrink");
   // Without the override this section is at least 300px tall (its own
-  // min-height), with a 7-row grid plus gaps and bottom padding below the
-  // bar - the white gap reported on the real site. Every one of those has to
-  // go, so the grid should end up the bar's own height, and the section just
-  // that plus its untouched 20px top padding.
+  // min-height), with a 7-row grid plus gaps and padding around the bar -
+  // the white gap reported on the real site. Every one of those has to go,
+  // so the grid and the whole section end up exactly the bar's own height.
   check("shrink: bar still rendered", shrink.barHeight > 20, true);
   check("shrink: grid is exactly the bar's height", Math.round(shrink.engineHeight), Math.round(shrink.barHeight));
-  check("shrink: section is the bar plus its top padding only", Math.round(shrink.sectionHeight), Math.round(shrink.barHeight + 20));
+  check("shrink: section is exactly the bar's height", Math.round(shrink.sectionHeight), Math.round(shrink.barHeight));
+
+  // Heights are fitted as "auto", not a measured number, so opening the
+  // phone dropdown still grows the section instead of being cut off.
+  await page.setViewportSize({ width: 400, height: 800 });
+  await page.click("#case-shrink .sn-nav__toggle");
+  const opened = await page.evaluate(measure, "#case-shrink");
+  check("shrink: open dropdown makes the bar taller", opened.barHeight > shrink.barHeight, true);
+  check("shrink: section grows with the open dropdown", Math.round(opened.sectionHeight), Math.round(opened.barHeight));
+  await page.click("#case-shrink .sn-nav__toggle");
+  await page.setViewportSize({ width: 1280, height: 800 });
 
   const shared = await page.evaluate(measure, "#case-shared");
   // 6 x 24px + 5 x 11px = 199px - untouched because another block shares it.

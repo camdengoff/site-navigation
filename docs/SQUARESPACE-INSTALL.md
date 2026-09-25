@@ -76,14 +76,16 @@ needs lives in that one block.
   probably clipping it, so check the real page.
 - **Squarespace's Fluid Engine editor enforces a minimum height per block**
   that it can't be dragged below, separately for Desktop and Mobile - which
-  leaves a gap of empty white space under the bar. The builder's "Shrink the
-  Code Block to fit the bar" option (on by default) removes it on the live
-  page: the grid's reserved rows and row gaps, the block's stretched height,
-  and the section's own minimum height and bottom padding. **It only applies
-  when the bar is the only block in its section**, so give the bar a section
-  of its own. With a second block in the section it does nothing, rather than
-  disturbing that other block's layout. The editor still shows the gap on
-  purpose, because its drag handles depend on Squarespace's own sizing.
+  leaves a gap of empty white space around the bar. The builder's "Size the
+  section to fit the bar" option (on by default) fixes it on the live page:
+  once the bar is built, the script sizes the bar's whole section to the
+  bar, removing the grid's reserved rows and gaps, the block's stretched
+  height, and the section's own minimum height and padding. (The top padding
+  of the page's first section is kept, so the bar isn't pulled up under the
+  site header.) **It only applies when the bar is the only block in its
+  section**, so give the bar a section of its own. With a second block in
+  the section it does nothing, rather than disturbing that block's layout.
+  The editor still shows the gap, because scripts don't run there.
 - **Always check the live page, not the editor.** Scripts are off in the
   editor, and Squarespace also hides embedded code from logged-in admins
   sometimes. A private window on the live URL is the honest test.

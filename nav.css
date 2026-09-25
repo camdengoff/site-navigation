@@ -99,52 +99,10 @@
   overflow: visible !important;
 }
 
-/* Squarespace's Fluid Engine editor won't let a block be dragged smaller
-   than its own enforced minimum grid-row count, and that minimum can end up
-   taller than the bar's own content - especially on the Mobile breakpoint,
-   which Squarespace sizes independently from Desktop - leaving a visible
-   gap of empty space below the bar that dragging in the editor can't fix.
-
-   That empty space comes from several places at once, and every one of them
-   has to go or a gap is still left behind:
-     - the fixed-size row tracks baked onto the .fluid-engine grid itself
-       (e.g. six 24px rows), and the row gaps between them - even empty
-       auto-sized rows still keep their gaps
-     - the block's own height/min-height, stretched to fill those rows
-     - the section's own minimum height and bottom padding, which Squarespace
-       keeps even after the grid inside it collapses
-
-   Safety: every rule is gated on the bar being the ONLY block in its Fluid
-   Engine grid (:not(:has(.fe-block ~ .fe-block))). A second block in the
-   same section - or any container shared with other blocks - fails that
-   check, and the whole section is left exactly as Squarespace laid it out.
-   That's what lets this be on by default. The top padding is also left
-   alone, so a bar under a transparent header isn't pulled up beneath it.
-
-   Also skipped in the editor (.sqs-edit-mode), where Squarespace's drag
-   handles and grid overlay expect its own row sizing - so the editor still
-   shows the reserved space, and the live page doesn't. */
-body:not(.sqs-edit-mode) .fluid-engine:has([data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)) {
-  grid-template-rows: none !important;
-  grid-auto-rows: auto !important;
-  row-gap: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-}
-
-body:not(.sqs-edit-mode) .fluid-engine:not(:has(.fe-block ~ .fe-block)) > .fe-block:has([data-shrink-block="true"]),
-body:not(.sqs-edit-mode) .fluid-engine:not(:has(.fe-block ~ .fe-block)) > .fe-block:has([data-shrink-block="true"]) .sqs-block,
-body:not(.sqs-edit-mode) .fluid-engine:not(:has(.fe-block ~ .fe-block)) > .fe-block:has([data-shrink-block="true"]) .sqs-block-content {
-  height: auto !important;
-  min-height: 0 !important;
-}
-
-body:not(.sqs-edit-mode) .page-section:has(.fluid-engine [data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)),
-body:not(.sqs-edit-mode) .page-section:has(.fluid-engine [data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)) .content-wrapper,
-body:not(.sqs-edit-mode) .page-section:has(.fluid-engine [data-shrink-block="true"]):not(:has(.fe-block ~ .fe-block)) .content {
-  min-height: 0 !important;
-  padding-bottom: 0 !important;
-}
+/* The blank space Squarespace reserves around a Code Block (its minimum
+   block height, and the section's own height and padding) is removed by
+   fitSection() in nav.js, which sizes the bar's section to the bar itself
+   when data-shrink-block="true". */
 
 .sn-nav__inner {
   display: flex;
