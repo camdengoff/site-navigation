@@ -46,7 +46,9 @@
   background: var(--sn-bg);
   border-radius: var(--sn-radius);
   font-family: var(--sn-font);
-  overflow: hidden;
+  /* visible, not hidden: the ::before below deliberately spills past this
+     element's own box for the edge-to-edge background, further down. */
+  overflow: visible;
 }
 
 .sn-nav *,
@@ -63,24 +65,17 @@
   z-index: 900;
 }
 
-/* Stretches the bar's background to the edges of the viewport, no matter how
-   narrow the Code Block (or the section around it) makes .sn-nav itself. The
-   label and links stay right where they were - only the background moves -
-   using a pseudo-element sized to 100vw and re-centered on the viewport,
-   painted behind everything else in the bar (z-index: -1).
+/* The bar's background always reaches the edges of the viewport, no matter
+   how narrow the Code Block (or the section around it) makes .sn-nav
+   itself. The label and links stay right where they were - only the
+   background moves - using a pseudo-element sized to 100vw and re-centered
+   on the viewport, painted behind everything else in the bar (z-index: -1).
 
-   Needs overflow: visible here, since the pseudo-element deliberately spills
-   outside this element's own box; the default overflow: hidden above exists
-   to clip rounded corners, which isn't a concern most bars turn on anyway.
-
-   Like position: sticky, this needs the section around the bar to not clip
-   its own content - a Squarespace section wrapper that sets overflow: hidden
-   will still cut the background off at the section's own edge. */
-.sn-nav[data-full-bleed="true"] {
-  overflow: visible;
-}
-
-.sn-nav[data-full-bleed="true"]::before {
+   This needs the section around the bar to not clip its own content - a
+   Squarespace section wrapper that sets overflow: hidden will still cut the
+   background off at the section's own edge, the same as position: sticky
+   needing an unclipped ancestor to work. */
+.sn-nav::before {
   content: "";
   position: absolute;
   top: 0;
@@ -96,40 +91,12 @@
    container set to overflow: clip, which otherwise cuts the background off
    at the section's own edge before it ever reaches the viewport edge -
    this is the actual blocker in practice, more often than the bar's own
-   ancestors. :has() scopes the override to only sections that contain a
-   full-bleed bar, so nothing else on the site loosens its clipping.
+   ancestors. :has() scopes the override to only sections that contain this
+   bar, so nothing else on the site loosens its clipping.
    !important because Squarespace's own clip is easy to win against
    otherwise - the same reason the color/bold rules further up need it. */
-.fluid-engine:has([data-full-bleed="true"]) {
+.fluid-engine:has(.sn-nav) {
   overflow: visible !important;
-}
-
-/* Squarespace's Fluid Engine editor won't let a block be dragged smaller
-   than its own enforced minimum grid-row count, and that minimum can end up
-   taller than the bar's own content - especially on the Mobile breakpoint,
-   which Squarespace sizes independently from Desktop - leaving a gap of
-   empty white space below the bar that dragging in the editor can't fix.
-
-   A first version of this tried removing the reserved space itself
-   (grid-template-rows on .fluid-engine), but that container is shared by
-   the whole section, not just this block - :has() still means "this
-   ancestor happens to contain the bar somewhere inside it," which can also
-   match an outer wrapper shared with unrelated sections. Instead of
-   shrinking the reserved space, this fills it: the two Squarespace wrappers
-   directly around the bar (unique to this one Code Block, never shared
-   with anything else) are told to stretch to their own parent's full
-   height, and the bar centers itself inside whatever height that turns
-   out to be. The reserved space still exists, but it's the bar's own
-   background now, not a blank gap. */
-.sqs-block-content:has(> .sqs-code-container > .sn-nav[data-fill-block="true"]),
-.sqs-code-container:has(> .sn-nav[data-fill-block="true"]) {
-  height: 100% !important;
-}
-
-.sn-nav[data-fill-block="true"] {
-  height: 100%;
-  display: flex;
-  align-items: center;
 }
 
 .sn-nav__inner {

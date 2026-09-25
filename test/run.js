@@ -110,27 +110,6 @@ async function main() {
   check("fullbleed: background escapes the wrapper", fullBleed.backgroundWidth > 300, true);
   check("fullbleed: overrides the Fluid Engine section's own clip", fullBleed.engineOverflow, "visible");
 
-  const fill = await page.evaluate(() => {
-    const engine = document.querySelector("#case-fill .fluid-engine");
-    const bar = document.querySelector("#case-fill [data-site-nav]");
-    const blockContent = document.querySelector("#case-fill .sqs-block-content");
-    return {
-      engineHeight: engine.getBoundingClientRect().height,
-      barHeight: bar.getBoundingClientRect().height,
-      blockContentHeight: blockContent.getBoundingClientRect().height,
-      barBg: getComputedStyle(bar).backgroundColor
-    };
-  });
-  // Unlike the shrink approach this replaced, the grid's own reserved space
-  // (a fixed 6 x 24px = 144px here) is left completely alone - .fluid-engine
-  // is shared with the rest of the section, so nothing here should touch it.
-  // The bar grows to fill that space instead, via wrappers unique to this
-  // one Code Block (.sqs-block-content, .sqs-code-container).
-  check("fill: leaves the shared grid track sizing alone", fill.engineHeight, 144);
-  check("fill: the wrapper directly around the bar also stretches", fill.blockContentHeight, 144);
-  check("fill: the bar grows to fill the reserved space", fill.barHeight, 144);
-  check("fill: the bar's own background still applies at that size", fill.barBg, "rgb(51, 68, 85)");
-
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
 
@@ -185,7 +164,7 @@ async function main() {
     check("minified: title read", result.title, "Give");
     check("minified: heading tag kept", result.titleTag, "H4");
     check("minified: links read", result.links, ["One Time", "Recurring"]);
-    check("minified: every bar built", result.bars, 4);
+    check("minified: every bar built", result.bars, 3);
 
     fs.unlinkSync(builtPath);
   } else {

@@ -68,22 +68,21 @@ needs lives in that one block.
 - **`sticky` probably won't work.** `position: sticky` needs no clipping
   ancestor, and Squarespace section wrappers commonly set `overflow: hidden`.
   Test it where you intend to use it, or leave the option off.
-- **The builder's "Stretch the background edge-to-edge" option** lets the
-  bar's background reach the sides of the page even though the Code Block
-  itself is capped to the section's content width - only the background
-  moves, the label and links stay where they were. It has the same
-  clipping-ancestor caveat as `sticky` above, so check it on the real page.
+- **The bar's background always reaches the sides of the page on its own**,
+  even though the Code Block itself is capped to the section's content
+  width - only the background moves, the label and links stay where they
+  were. It has the same clipping-ancestor caveat as `sticky` above: if it
+  doesn't reach the edge on a given page, a Squarespace section wrapper is
+  probably clipping it, so check the real page.
 - **Squarespace's Fluid Engine editor enforces a minimum height per block**
   that it can't be dragged below, separately for Desktop and Mobile - so a
-  block sized fine on Desktop can leave a real gap of empty white space
-  under the bar on Mobile, with no way to fix it by dragging. The builder's
-  "Fill the whole Code Block" option doesn't remove that reserved space -
-  an earlier version tried that and it ended up affecting other sections,
-  since the space is reserved on a grid container shared by the whole
-  section, not just this block. Instead, the bar's own background grows to
-  cover the space Squarespace already reserved, so the gap becomes part of
-  the bar instead of a blank strip below it. Nothing shared with other
-  sections gets touched either way.
+  block sized fine on Desktop can leave a gap of empty white space under
+  the bar on Mobile, with no way to fix it by dragging. There's currently
+  no override for this in the engine itself (a couple of approaches were
+  tried and pulled - one affected other sections, the other didn't reliably
+  apply) - if you hit it, resize the block for the Mobile breakpoint
+  specifically in Squarespace's editor as far as it will let you, and
+  treat any remaining gap as a known limitation for now.
 - **Always check the live page, not the editor.** Scripts are off in the
   editor, and Squarespace also hides embedded code from logged-in admins
   sometimes. A private window on the live URL is the honest test.
