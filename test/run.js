@@ -118,6 +118,9 @@ async function main() {
       barHeight: section.querySelector("[data-site-nav]").getBoundingClientRect().height
     };
   };
+  // Let the fixture's "Squarespace script" rewrite the section's styles
+  // first - the fit has to survive that.
+  await page.waitForTimeout(500);
   const shrink = await page.evaluate(measure, "#case-shrink");
   // Without the override this section is at least 300px tall (its own
   // min-height), with a 7-row grid plus gaps and padding around the bar -
@@ -131,6 +134,7 @@ async function main() {
   // phone dropdown still grows the section instead of being cut off.
   await page.setViewportSize({ width: 400, height: 800 });
   await page.click("#case-shrink .sn-nav__toggle");
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   const opened = await page.evaluate(measure, "#case-shrink");
   check("shrink: open dropdown makes the bar taller", opened.barHeight > shrink.barHeight, true);
   check("shrink: section grows with the open dropdown", Math.round(opened.sectionHeight), Math.round(opened.barHeight));

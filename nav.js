@@ -23,7 +23,7 @@
      updated block onto a page that briefly still has the old one loaded (e.g.
      mid-save) can leave two copies running. The older one steps aside instead
      of the two fighting over the same bar. */
-  var VERSION = 3;
+  var VERSION = 4;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
@@ -231,20 +231,74 @@
     var keepTop = !section.previousElementSibling ||
       !section.previousElementSibling.matches("section, .page-section");
 
+    var path = [];
     for (var node = el.parentElement; node; node = node.parentElement) {
-      var style = node.style;
-      style.setProperty("min-height", "0", "important");
-      style.setProperty("height", "auto", "important");
-      style.setProperty("padding-bottom", "0", "important");
-      if (!keepTop) style.setProperty("padding-top", "0", "important");
-
-      if (/grid/.test(getComputedStyle(node).display)) {
-        style.setProperty("grid-template-rows", "none", "important");
-        style.setProperty("grid-auto-rows", "auto", "important");
-        style.setProperty("row-gap", "0", "important");
-      }
-
+      path.push(node);
       if (node === section) break;
+    }
+
+    function fit() {
+      path.forEach(function (node) {
+        var style = node.style;
+        force(style, "min-height", "0");
+        force(style, "padding-bottom", "0");
+        force(style, "margin-bottom", "0");
+        if (!keepTop) {
+          force(style, "padding-top", "0");
+          force(style, "margin-top", "0");
+        }
+        if (node !== section) force(style, "height", "auto");
+
+        if (/grid/.test(getComputedStyle(node).display)) {
+          force(style, "grid-template-rows", "none");
+          force(style, "grid-auto-rows", "auto");
+          force(style, "row-gap", "0");
+        }
+      });
+
+      // Then end the section exactly where the bar ends. This catches any
+      // space left over that isn't one of the wrappers' own sizing - e.g.
+      // Squarespace's Mobile layout adding spacing of its own.
+      var height = Math.ceil(el.getBoundingClientRect().bottom - section.getBoundingClientRect().top);
+      if (height > 0) force(section.style, "height", height + "px");
+    }
+
+    // Refit whenever something could have changed the sizes: the bar itself
+    // (the phone dropdown opening, or switching layouts), the window, or
+    // Squarespace's own scripts rewriting a wrapper's styles after load -
+    // which is what its Mobile layout does. fit() only writes a style that
+    // actually differs, so reacting to its own changes settles immediately.
+    var queued = false;
+    function soon() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        fit();
+      });
+    }
+
+    fit();
+    window.addEventListener("resize", soon);
+    window.addEventListener("load", soon);
+    if (typeof ResizeObserver === "function") {
+      // Runs before the next paint, so the section never shows a frame
+      // at the wrong height when the dropdown opens or closes.
+      new ResizeObserver(fit).observe(el);
+    }
+    if (typeof MutationObserver === "function") {
+      var observer = new MutationObserver(soon);
+      path.forEach(function (node) {
+        observer.observe(node, { attributes: true, attributeFilter: ["style", "class"] });
+      });
+    }
+  }
+
+  /* Sets an inline !important style, but only if it isn't already set - so
+     the MutationObserver above isn't re-triggered by its own no-op writes. */
+  function force(style, property, value) {
+    if (style.getPropertyValue(property) !== value || style.getPropertyPriority(property) !== "important") {
+      style.setProperty(property, value, "important");
     }
   }
 

@@ -78,9 +78,20 @@
           </div></div>
         </div>
       </div>
+      <!-- Spacing that isn't any wrapper's own padding or height - the kind
+           Squarespace's Mobile layout adds. -->
+      <div class="mobile-spacer" style="height:60px"></div>
     </div>
   </div>
 </section>
+<script>
+  // Squarespace's own scripts rewrite section styles after the page loads.
+  setTimeout(function () {
+    var section = document.getElementById("case-shrink");
+    section.style.minHeight = "300px";
+    section.querySelector(".fluid-engine").style.rowGap = "11px";
+  }, 300);
+</script>
 
 <!-- Case 5: same shape, but a second block shares the section. The shrink
      must not touch it - the rows are there for that other block too. -->

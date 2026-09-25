@@ -80,7 +80,9 @@ needs lives in that one block.
   section to fit the bar" option (on by default) fixes it on the live page:
   once the bar is built, the script sizes the bar's whole section to the
   bar, removing the grid's reserved rows and gaps, the block's stretched
-  height, and the section's own minimum height and padding. (The top padding
+  height, and the section's own minimum height and padding, then ends the
+  section exactly at the bottom of the bar - and re-applies that if
+  Squarespace's Mobile layout changes things after the page loads. (The top padding
   of the page's first section is kept, so the bar isn't pulled up under the
   site header.) **It only applies when the bar is the only block in its
   section**, so give the bar a section of its own. With a second block in
