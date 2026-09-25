@@ -23,7 +23,7 @@
      updated block onto a page that briefly still has the old one loaded (e.g.
      mid-save) can leave two copies running. The older one steps aside instead
      of the two fighting over the same bar. */
-  var VERSION = 4;
+  var VERSION = 5;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
@@ -216,14 +216,18 @@
      padding being removed belong to the whole section, and another block
      there would lose its layout. */
   function fitSection(el) {
-    if (el.getAttribute("data-shrink-block") !== "true") return;
+    if (el.getAttribute("data-shrink-block") !== "true") {
+      return debug(el, null, "not fitting: data-shrink-block isn't \"true\"");
+    }
 
     var section = el.closest("section, .page-section");
-    if (!section) return;
+    if (!section) return debug(el, null, "not fitting: no <section> around the bar");
 
     var blocks = section.querySelectorAll(".sqs-block, .fe-block");
     for (var i = 0; i < blocks.length; i++) {
-      if (!blocks[i].contains(el)) return;
+      if (!blocks[i].contains(el)) {
+        return debug(el, section, "not fitting: another block shares the section: " + describe(blocks[i]));
+      }
     }
 
     // The first section on a page is often padded down to clear a header
@@ -261,6 +265,8 @@
       // Squarespace's Mobile layout adding spacing of its own.
       var height = Math.ceil(el.getBoundingClientRect().bottom - section.getBoundingClientRect().top);
       if (height > 0) force(section.style, "height", height + "px");
+
+      debug(el, section, "fitted" + (keepTop ? " (first section: top spacing kept)" : ""), path);
     }
 
     // Refit whenever something could have changed the sizes: the bar itself
@@ -281,6 +287,7 @@
     fit();
     window.addEventListener("resize", soon);
     window.addEventListener("load", soon);
+    if (DEBUG) window.addEventListener("scroll", soon, { passive: true });
     if (typeof ResizeObserver === "function") {
       // Runs before the next paint, so the section never shows a frame
       // at the wrong height when the dropdown opens or closes.
@@ -292,6 +299,84 @@
         observer.observe(node, { attributes: true, attributeFilter: ["style", "class"] });
       });
     }
+  }
+
+  /* Diagnostics, shown only when the page address ends in ?sn-debug. Lays
+     out, in a panel on the page itself (so it can be read on a phone with no
+     developer tools), what fitSection() did and what actually sits under
+     the bar - enough to tell where any remaining gap comes from. */
+  var DEBUG = /[?&]sn-debug(=|&|$)/.test(window.location.search);
+
+  function debug(el, section, status, path) {
+    if (!DEBUG) return;
+
+    var lines = ["site-navigation v" + VERSION + " | window " + window.innerWidth + "px wide", status];
+    var bar = el.getBoundingClientRect();
+    lines.push("bar: " + px(bar.height) + " tall");
+
+    if (section) {
+      section.style.outline = "3px dashed red";
+      section.style.outlineOffset = "-3px";
+      var box = section.getBoundingClientRect();
+      lines.push("section (red): " + describe(section) + " | " + px(box.height) +
+        " tall | ends " + px(box.bottom - bar.bottom) + " below the bar");
+
+      var next = section.nextElementSibling;
+      while (next && /^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(next.tagName)) next = next.nextElementSibling;
+      if (next) {
+        next.style.outline = "3px dashed blue";
+        next.style.outlineOffset = "-3px";
+        var after = next.getBoundingClientRect();
+        var first = next.querySelector(".sqs-block, h1, h2, h3, h4, h5, h6, p, img");
+        lines.push("next (blue): " + describe(next) + " | starts " + px(after.top - box.bottom) +
+          " after the section" + (first ? " | its content starts " + px(first.getBoundingClientRect().top - after.top) + " below its top" : ""));
+        lines.push("  " + spacing(next));
+      } else {
+        lines.push("next: nothing after the section in " + describe(section.parentElement));
+      }
+    }
+
+    if (bar.bottom + 8 < window.innerHeight && bar.bottom > 0) {
+      var probe = document.elementFromPoint(window.innerWidth / 2, bar.bottom + 8);
+      lines.push("8px under the bar: " + (probe ? describe(probe) : "nothing") +
+        (probe && probe.closest("section") ? " (in " + describe(probe.closest("section")) + ")" : ""));
+    } else {
+      lines.push("8px under the bar: (scroll so the bar is on screen)");
+    }
+
+    if (path) {
+      lines.push("wrappers, bar -> section:");
+      path.forEach(function (node) {
+        lines.push("  " + describe(node) + " | h " + px(node.getBoundingClientRect().height) + " | " + spacing(node));
+      });
+    }
+
+    var panel = document.getElementById("sn-debug");
+    if (!panel) {
+      panel = document.createElement("pre");
+      panel.id = "sn-debug";
+      panel.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;margin:0;" +
+        "max-height:50vh;overflow:auto;padding:8px;background:rgba(0,0,0,0.85);color:#fff;" +
+        "font:11px/1.4 monospace;white-space:pre-wrap;word-break:break-all;";
+      document.body.appendChild(panel);
+    }
+    panel.textContent = lines.join("\n");
+  }
+
+  function describe(node) {
+    if (!node || !node.tagName) return String(node);
+    var classes = typeof node.className === "string" ? node.className.trim().split(/\s+/).slice(0, 3).join(".") : "";
+    return node.tagName.toLowerCase() + (node.id ? "#" + node.id : "") + (classes ? "." + classes : "");
+  }
+
+  function spacing(node) {
+    var cs = getComputedStyle(node);
+    return "pad " + cs.paddingTop + "/" + cs.paddingBottom + " | margin " + cs.marginTop + "/" + cs.marginBottom +
+      " | min-h " + cs.minHeight + (/grid/.test(cs.display) ? " | rows " + cs.gridTemplateRows + " gap " + cs.rowGap : "");
+  }
+
+  function px(value) {
+    return Math.round(value) + "px";
   }
 
   /* Sets an inline !important style, but only if it isn't already set - so
