@@ -18,9 +18,9 @@
 .sn-nav {
   /* ---- Things you can change ---- */
   --sn-bg: #ececec;                /* bar background */
-  --sn-text: #111111;              /* label + current link color */
-  --sn-accent: #111111;            /* underline under the current page */
-  --sn-muted: rgba(0, 0, 0, 0.55); /* color of the other links */
+  --sn-text: #111111;              /* label + link color - the one color both are built from */
+  --sn-accent: var(--sn-text);     /* underline under the current page */
+  --sn-muted: var(--sn-text);      /* color of the other links - same as the label unless overridden */
   --sn-hover: var(--sn-text);      /* link color on hover/focus */
   --sn-divider: rgba(0, 0, 0, 0.15); /* hairline above the open dropdown */
   /* Type. "inherit" means "whatever this page already uses", so by default the

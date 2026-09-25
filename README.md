@@ -156,16 +156,22 @@ builder already does this with the `style` attribute:
 
 ```html
 <div data-site-nav
-     style="--sn-bg:#111827; --sn-text:#ffffff; --sn-accent:#f59e0b; --sn-height:3.5rem"
+     style="--sn-bg:#111827; --sn-text:#ffffff; --sn-hover:#f59e0b; --sn-height:3.5rem"
      data-links='[...]'></div>
 ```
+
+The builder only exposes **Bar background**, **Text**, and **Link color on
+hover** — `--sn-muted` (the other links) and `--sn-accent` (the current
+page's underline) both default to whatever `--sn-text` is, so the label and
+every link come out the same color and opacity unless you override one by
+hand.
 
 | Variable | Does |
 |---|---|
 | `--sn-bg` | Bar background |
-| `--sn-text` | Label and current-page link color |
-| `--sn-muted` | Color of the links you're not on |
-| `--sn-accent` | Marker on the current page (underline, or a bar in the dropdown) |
+| `--sn-text` | Label and link color - the one color both are built from |
+| `--sn-muted` | Color of the links you're not on (defaults to `--sn-text`) |
+| `--sn-accent` | Marker on the current page (underline, or a bar in the dropdown; defaults to `--sn-text`) |
 | `--sn-hover` | Link color on hover/focus (defaults to `--sn-text`) |
 | `--sn-divider` | Hairline above the open dropdown |
 | `--sn-font` | Font family |

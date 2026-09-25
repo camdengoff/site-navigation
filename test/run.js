@@ -78,14 +78,14 @@ async function main() {
   check("options: bold label applied despite the page's own h4 weight", options.titleBold, "700");
   check("options: bold links applied despite the page's own p color", options.linkBold, "700");
   check("options: title color wins over the page's own h4 color", options.titleColor, "rgb(17, 17, 17)");
-  check("options: link color wins over the page's own p color", options.linkColor, "rgba(0, 0, 0, 0.55)");
+  check("options: link color matches the label's color (same base, same opacity)", options.linkColor, "rgb(17, 17, 17)");
 
   await page.hover("#case-options .sn-nav__link");
   await page.waitForTimeout(250); // let the color transition finish before reading it
   const hoverColor = await page.evaluate(() =>
     getComputedStyle(document.querySelector("#case-options .sn-nav__link")).color
   );
-  check("options: hover color applied", hoverColor, "rgb(17, 17, 17)");
+  check("options: hover color overrides to its own picked color", hoverColor, "rgb(0, 0, 255)");
 
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
