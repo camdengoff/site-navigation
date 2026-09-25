@@ -152,6 +152,19 @@ async function main() {
   });
   check("takeover: bar built by an older copy is rebuilt", takeover, { old: false, links: ["Fresh"] });
 
+  // Squarespace opens its editor on the same page without a reload, so a
+  // fit from before has to be undone the moment the editor opens - and put
+  // back once it closes.
+  await page.evaluate(() => document.body.classList.add("sqs-edit-mode"));
+  await page.waitForTimeout(100);
+  const whileEditing = await page.evaluate(measure, "#case-shrink");
+  check("shrink: undone when the editor opens (grid back to its own rows)", whileEditing.engineHeight > 200, true);
+  check("shrink: undone when the editor opens (section back to its own min-height)", whileEditing.sectionHeight >= 300, true);
+  await page.evaluate(() => document.body.classList.remove("sqs-edit-mode"));
+  await page.waitForTimeout(100);
+  const afterEditing = await page.evaluate(measure, "#case-shrink");
+  check("shrink: fitted again once the editor closes", Math.round(afterEditing.sectionHeight), Math.round(afterEditing.barHeight));
+
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
 
@@ -173,6 +186,26 @@ async function main() {
   const editorGrid = await editing.evaluate(() =>
     document.querySelector("#case-shrink .fluid-engine").getBoundingClientRect().height);
   check("editor: shrink leaves the grid alone", editorGrid > 200, true);
+
+  /* ---- Inside Squarespace's dashboard: the page is framed under /config,
+         where Edit opens without a reload. The section is never fitted
+         there - only on the live page. ---- */
+  const ROOT = path.join(__dirname, "..");
+  const dashboard = await browser.newPage();
+  await dashboard.route("http://site.test/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/config/pages") {
+      return route.fulfill({ contentType: "text/html", body: '<iframe src="/test/fixture.html" style="width:1280px;height:3000px"></iframe>' });
+    }
+    return route.fulfill({ path: path.join(ROOT, url.pathname) });
+  });
+  await dashboard.goto("http://site.test/config/pages");
+  const framed = dashboard.frames().find((f) => f.url().endsWith("/test/fixture.html"));
+  await framed.waitForFunction("document.querySelectorAll('.sn-nav__link').length > 0");
+  await framed.waitForTimeout(300);
+  const inDashboard = await framed.evaluate(measure, "#case-shrink");
+  check("dashboard: bar still built", inDashboard.barHeight > 20, true);
+  check("dashboard: section not fitted", inDashboard.sectionHeight >= 300, true);
 
   /* ---- The same fixture, but running the minified files that actually get
          pasted into Squarespace. This is the artifact being shipped, so a

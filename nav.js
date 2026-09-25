@@ -23,7 +23,7 @@
      updated block onto a page that briefly still has the old one loaded (e.g.
      mid-save) can leave two copies running. The older one steps aside instead
      of the two fighting over the same bar. */
-  var VERSION = 6;
+  var VERSION = 7;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
@@ -46,6 +46,21 @@
      page alone there too rather than replacing content someone is editing. */
   function isEditing() {
     return !!document.body && /sqs-edit-mode/.test(document.body.className);
+  }
+
+  /* Squarespace shows the site inside a frame in its own dashboard (under
+     /config), where clicking Edit switches into the editor without
+     reloading the page. Some things - resizing the section around the bar -
+     are only for the live page, so they check this too. A frame whose
+     parent can't be read is a different site framing this one, which only
+     Squarespace's dashboard does to a Squarespace page. */
+  function inSquarespaceDashboard() {
+    if (window.self === window.top) return false;
+    try {
+      return /^\/config(\/|$)/.test(window.top.location.pathname);
+    } catch (error) {
+      return true;
+    }
   }
 
   /* ---------------------------------------------------------------------
@@ -209,25 +224,26 @@
 
      Done from here rather than in CSS so it doesn't depend on Squarespace's
      own class names for each wrapper - whatever sits between the bar and its
-     section gets fitted. Scripts don't run in the editor, so the editor
-     keeps Squarespace's own sizing and its drag handles still line up.
+     section gets fitted.
+
+     Live page only. Never inside Squarespace's dashboard, and undone the
+     moment the editor opens - it opens on the same page without a reload,
+     so a fit from before would otherwise carry over and the editor's grid
+     and drag handles would no longer match the section.
 
      Only when the bar is the only block in its section: the rows and
      padding being removed belong to the whole section, and another block
      there would lose its layout. */
   function fitSection(el) {
-    if (el.getAttribute("data-shrink-block") !== "true") {
-      return debug(el, null, "not fitting: data-shrink-block isn't \"true\"");
-    }
+    if (el.getAttribute("data-shrink-block") !== "true") return;
+    if (inSquarespaceDashboard()) return;
 
     var section = el.closest("section, .page-section");
-    if (!section) return debug(el, null, "not fitting: no <section> around the bar");
+    if (!section) return;
 
     var blocks = section.querySelectorAll(".sqs-block, .fe-block");
     for (var i = 0; i < blocks.length; i++) {
-      if (!blocks[i].contains(el)) {
-        return debug(el, section, "not fitting: another block shares the section: " + describe(blocks[i]));
-      }
+      if (!blocks[i].contains(el)) return;
     }
 
     // The first section on a page is often padded down to clear a header
@@ -241,22 +257,49 @@
       if (node === section) break;
     }
 
+    // Each style's own value from before the fit, so it can be put back
+    // exactly as Squarespace had it.
+    var saved = [];
+
+    function force(node, property, value) {
+      var style = node.style;
+      if (style.getPropertyValue(property) === value && style.getPropertyPriority(property) === "important") return;
+      var known = saved.some(function (entry) { return entry.node === node && entry.property === property; });
+      if (!known) {
+        saved.push({
+          node: node,
+          property: property,
+          value: style.getPropertyValue(property),
+          priority: style.getPropertyPriority(property)
+        });
+      }
+      style.setProperty(property, value, "important");
+    }
+
+    function unfit() {
+      saved.splice(0).forEach(function (entry) {
+        if (entry.value) entry.node.style.setProperty(entry.property, entry.value, entry.priority);
+        else entry.node.style.removeProperty(entry.property);
+      });
+    }
+
     function fit() {
+      if (isEditing()) return unfit();
+
       path.forEach(function (node) {
-        var style = node.style;
-        force(style, "min-height", "0");
-        force(style, "padding-bottom", "0");
-        force(style, "margin-bottom", "0");
+        force(node, "min-height", "0");
+        force(node, "padding-bottom", "0");
+        force(node, "margin-bottom", "0");
         if (!keepTop) {
-          force(style, "padding-top", "0");
-          force(style, "margin-top", "0");
+          force(node, "padding-top", "0");
+          force(node, "margin-top", "0");
         }
-        if (node !== section) force(style, "height", "auto");
+        if (node !== section) force(node, "height", "auto");
 
         if (/grid/.test(getComputedStyle(node).display)) {
-          force(style, "grid-template-rows", "none");
-          force(style, "grid-auto-rows", "auto");
-          force(style, "row-gap", "0");
+          force(node, "grid-template-rows", "none");
+          force(node, "grid-auto-rows", "auto");
+          force(node, "row-gap", "0");
         }
       });
 
@@ -264,9 +307,7 @@
       // space left over that isn't one of the wrappers' own sizing - e.g.
       // Squarespace's Mobile layout adding spacing of its own.
       var height = Math.ceil(el.getBoundingClientRect().bottom - section.getBoundingClientRect().top);
-      if (height > 0) force(section.style, "height", height + "px");
-
-      debug(el, section, "fitted" + (keepTop ? " (first section: top spacing kept)" : ""), path);
+      if (height > 0) force(section, "height", height + "px");
     }
 
     // Refit whenever something could have changed the sizes: the bar itself
@@ -287,7 +328,6 @@
     fit();
     window.addEventListener("resize", soon);
     window.addEventListener("load", soon);
-    if (DEBUG) window.addEventListener("scroll", soon, { passive: true });
     if (typeof ResizeObserver === "function") {
       // Runs before the next paint, so the section never shows a frame
       // at the wrong height when the dropdown opens or closes.
@@ -298,96 +338,8 @@
       path.forEach(function (node) {
         observer.observe(node, { attributes: true, attributeFilter: ["style", "class"] });
       });
-    }
-  }
-
-  /* Diagnostics, shown only when the page address ends in ?sn-debug. Lays
-     out, in a panel on the page itself (so it can be read on a phone with no
-     developer tools), what fitSection() did and what actually sits under
-     the bar - enough to tell where any remaining gap comes from. */
-  var DEBUG = /[?&]sn-debug(=|&|$)/.test(window.location.search);
-
-  function debug(el, section, status, path) {
-    if (!DEBUG) return;
-
-    var lines = ["site-navigation v" + VERSION + " | window " + window.innerWidth + "px wide", status];
-    var bar = el.getBoundingClientRect();
-    lines.push("bar: " + px(bar.height) + " tall");
-
-    if (section) {
-      section.style.outline = "3px dashed red";
-      section.style.outlineOffset = "-3px";
-      var box = section.getBoundingClientRect();
-      lines.push("section (red): " + describe(section) + " | " + px(box.height) +
-        " tall | ends " + px(box.bottom - bar.bottom) + " below the bar");
-
-      var next = section.nextElementSibling;
-      while (next && /^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(next.tagName)) next = next.nextElementSibling;
-      if (next) {
-        next.style.outline = "3px dashed blue";
-        next.style.outlineOffset = "-3px";
-        var after = next.getBoundingClientRect();
-        var first = next.querySelector(".sqs-block, h1, h2, h3, h4, h5, h6, p, img");
-        lines.push("next (blue): " + describe(next) + " | starts " + px(after.top - box.bottom) +
-          " after the section" + (first ? " | its content starts " + px(first.getBoundingClientRect().top - after.top) + " below its top" : ""));
-        lines.push("  " + spacing(next));
-      } else {
-        lines.push("next: nothing after the section in " + describe(section.parentElement));
-      }
-    }
-
-    if (bar.bottom + 8 < window.innerHeight && bar.bottom > 0) {
-      var probe = document.elementFromPoint(window.innerWidth / 2, bar.bottom + 8);
-      lines.push("8px under the bar: " + (probe ? describe(probe) : "nothing") +
-        (probe && probe.closest("section") ? " (in " + describe(probe.closest("section")) + ")" : ""));
-    } else {
-      lines.push("8px under the bar: (scroll so the bar is on screen)");
-    }
-
-    if (path) {
-      lines.push("wrappers, bar -> section:");
-      path.forEach(function (node) {
-        lines.push("  " + describe(node) + " | h " + px(node.getBoundingClientRect().height) + " | " + spacing(node));
-      });
-    }
-
-    debugPanel().textContent = lines.join("\n");
-  }
-
-  function debugPanel() {
-    var panel = document.getElementById("sn-debug");
-    if (!panel) {
-      panel = document.createElement("pre");
-      panel.id = "sn-debug";
-      panel.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;margin:0;" +
-        "max-height:50vh;overflow:auto;padding:8px;background:rgba(0,0,0,0.85);color:#fff;" +
-        "font:11px/1.4 monospace;white-space:pre-wrap;word-break:break-all;";
-      document.body.appendChild(panel);
-    }
-    return panel;
-  }
-
-  function describe(node) {
-    if (!node || !node.tagName) return String(node);
-    var classes = typeof node.className === "string" ? node.className.trim().split(/\s+/).slice(0, 3).join(".") : "";
-    return node.tagName.toLowerCase() + (node.id ? "#" + node.id : "") + (classes ? "." + classes : "");
-  }
-
-  function spacing(node) {
-    var cs = getComputedStyle(node);
-    return "pad " + cs.paddingTop + "/" + cs.paddingBottom + " | margin " + cs.marginTop + "/" + cs.marginBottom +
-      " | min-h " + cs.minHeight + (/grid/.test(cs.display) ? " | rows " + cs.gridTemplateRows + " gap " + cs.rowGap : "");
-  }
-
-  function px(value) {
-    return Math.round(value) + "px";
-  }
-
-  /* Sets an inline !important style, but only if it isn't already set - so
-     the MutationObserver above isn't re-triggered by its own no-op writes. */
-  function force(style, property, value) {
-    if (style.getPropertyValue(property) !== value || style.getPropertyPriority(property) !== "important") {
-      style.setProperty(property, value, "important");
+      // Squarespace marks the editor opening on <body>.
+      observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
     }
   }
 
@@ -537,23 +489,14 @@
     // loads before the page's Code Block and would otherwise build the bar
     // first with its older behavior, leaving this copy nothing to do.
     var navs = document.querySelectorAll("[data-site-nav]");
-    var found = [];
     Array.prototype.forEach.call(navs, function (el) {
       var ready = el.getAttribute("data-site-nav-ready");
-      found.push(ready || "new");
       if (ready !== null && Number(ready) >= VERSION) return;
       el.setAttribute("data-site-nav-ready", String(VERSION));
       getLinks(el).then(function (links) {
         render(el, links);
       });
     });
-
-    // Replaced by the full report once a bar is built and fitted.
-    if (DEBUG && document.body && !document.getElementById("sn-debug")) {
-      debugPanel().textContent = "site-navigation v" + VERSION + " | " + (navs.length
-        ? "bars found, marked: " + found.join(", ") + " (\"true\" = built by an older copy, now rebuilt)"
-        : "no bars found on this page");
-    }
   }
 
   /* Squarespace swaps page content in without a full reload on some templates,

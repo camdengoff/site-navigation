@@ -87,7 +87,9 @@ needs lives in that one block.
   site header.) **It only applies when the bar is the only block in its
   section**, so give the bar a section of its own. With a second block in
   the section it does nothing, rather than disturbing that block's layout.
-  The editor still shows the gap, because scripts don't run there.
+  It only happens on the live page: inside Squarespace's dashboard and
+  editor the section keeps Squarespace's own sizing, so the editor's grid
+  and drag handles still line up. Check the live page in a private window.
 - **Always check the live page, not the editor.** Scripts are off in the
   editor, and Squarespace also hides embedded code from logged-in admins
   sometimes. A private window on the live URL is the honest test.
