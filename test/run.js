@@ -110,6 +110,24 @@ async function main() {
   check("fullbleed: background escapes the wrapper", fullBleed.backgroundWidth > 300, true);
   check("fullbleed: overrides the Fluid Engine section's own clip", fullBleed.engineOverflow, "visible");
 
+  const shrink = await page.evaluate(() => {
+    const engine = document.querySelector("#case-shrink .fluid-engine");
+    const bar = document.querySelector("#case-shrink [data-site-nav]");
+    return {
+      engineHeight: engine.getBoundingClientRect().height,
+      barHeight: bar.getBoundingClientRect().height
+    };
+  });
+  // Without the override this fixture's grid is a fixed 6 x 24px = 144px,
+  // regardless of the bar's own (much shorter) content - the same gap
+  // reported on the real site's Mobile breakpoint. (getComputedStyle's
+  // gridTemplateRows isn't a useful thing to assert on here: removing the
+  // explicit tracks makes the browser report back the resolved implicit
+  // row sizes rather than the literal "none" that was set, even though the
+  // override worked - the height actually collapsing is what matters.)
+  check("shrink: grid collapses close to the bar's own height", shrink.engineHeight < 100, true);
+  check("shrink: not just an empty collapse - the bar still rendered", shrink.barHeight > 20, true);
+
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
 
@@ -164,7 +182,7 @@ async function main() {
     check("minified: title read", result.title, "Give");
     check("minified: heading tag kept", result.titleTag, "H4");
     check("minified: links read", result.links, ["One Time", "Recurring"]);
-    check("minified: every bar built", result.bars, 3);
+    check("minified: every bar built", result.bars, 4);
 
     fs.unlinkSync(builtPath);
   } else {

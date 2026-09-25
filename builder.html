@@ -334,6 +334,11 @@
         <label for="sticky">Stick the bar to the top of the screen while scrolling</label>
       </div>
       <p class="hint" style="margin:0.4rem 0 0">The bar's background always reaches the edges of the page on its own, even from inside a narrower Code Block. Like sticky, that can fail if the section around the bar clips its own content (Squarespace section wrappers sometimes set <code>overflow: hidden</code>) &mdash; check the real page.</p>
+      <div class="checkbox">
+        <input type="checkbox" id="shrinkBlock">
+        <label for="shrinkBlock">Let the block shrink past Squarespace's own minimum height</label>
+      </div>
+      <p class="hint" style="margin:0.4rem 0 0">Only turn this on if the bar is the <strong>only</strong> thing in its Code Block's section &mdash; Squarespace reserves that minimum height as part of the whole section's layout grid, and removing it would also affect another block sharing that same section.</p>
     </section>
 
     <section class="card">
@@ -398,6 +403,7 @@
     title: "Watch Online",
     titleUrl: "",
     sticky: false,
+    shrinkBlock: false,
     phone: "dropdown",
     type: "h4p",
     heading: "h4",
@@ -416,6 +422,7 @@
     title: document.getElementById("title"),
     titleUrl: document.getElementById("titleUrl"),
     sticky: document.getElementById("sticky"),
+    shrinkBlock: document.getElementById("shrinkBlock"),
     phone: document.getElementById("phoneMode"),
     type: document.getElementById("typeStyle"),
     heading: document.getElementById("headingLevel"),
@@ -590,6 +597,9 @@
     if (state.sticky) {
       lines.push('     data-sticky="true"');
     }
+    if (state.shrinkBlock) {
+      lines.push('     data-shrink-block="true"');
+    }
     // Always written out, so the snippet says plainly which phone layout it
     // uses instead of relying on the default.
     lines.push('     data-phone="' + (state.phone === "swipe" ? "swipe" : "dropdown") + '"');
@@ -667,6 +677,7 @@
       title: state.title.trim(),
       titleUrl: state.titleUrl.trim(),
       sticky: state.sticky,
+      shrinkBlock: state.shrinkBlock,
       phone: state.phone,
       titleTag: state.type === "h4p" ? state.heading : "",
       linkTag: state.type === "h4p" ? "p" : "",
@@ -731,6 +742,7 @@
     state.title = found.getAttribute("data-title") || "";
     state.titleUrl = found.getAttribute("data-title-url") || "";
     state.sticky = found.getAttribute("data-sticky") === "true";
+    state.shrinkBlock = found.getAttribute("data-shrink-block") === "true";
     state.phone = found.getAttribute("data-phone") === "swipe" ? "swipe" : "dropdown";
     state.boldLabel = found.getAttribute("data-bold-label") === "true";
     state.boldLinks = found.getAttribute("data-bold-links") === "true";
@@ -759,6 +771,7 @@
     el.title.value = state.title;
     el.titleUrl.value = state.titleUrl;
     el.sticky.checked = state.sticky;
+    el.shrinkBlock.checked = state.shrinkBlock;
     el.phone.value = state.phone;
     el.type.value = state.type;
     el.heading.value = state.heading;
@@ -821,6 +834,11 @@
 
   el.sticky.addEventListener("change", function () {
     state.sticky = el.sticky.checked;
+    update();
+  });
+
+  el.shrinkBlock.addEventListener("change", function () {
+    state.shrinkBlock = el.shrinkBlock.checked;
     update();
   });
 
