@@ -146,6 +146,12 @@ async function main() {
   check("shrink: left alone when another block shares the section", Math.round(shared.engineHeight), 199);
   check("shrink: shared section keeps its own min-height", shared.sectionHeight >= 300, true);
 
+  const takeover = await page.evaluate(() => {
+    const el = document.querySelector("#case-takeover [data-site-nav]");
+    return { old: !!el.querySelector(".old-build"), links: [...el.querySelectorAll(".sn-nav__link")].map((a) => a.textContent) };
+  });
+  check("takeover: bar built by an older copy is rebuilt", takeover, { old: false, links: ["Fresh"] });
+
   const version = await page.evaluate(() => typeof window.SiteNav.version);
   check("version exposed", version, "number");
 
@@ -205,7 +211,7 @@ async function main() {
     check("minified: title read", result.title, "Give");
     check("minified: heading tag kept", result.titleTag, "H4");
     check("minified: links read", result.links, ["One Time", "Recurring"]);
-    check("minified: every bar built", result.bars, 5);
+    check("minified: every bar built", result.bars, 6);
 
     fs.unlinkSync(builtPath);
   } else {

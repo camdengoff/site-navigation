@@ -114,6 +114,14 @@
   </div>
 </section>
 
+<!-- Case 6: a bar an older copy of the script already built (e.g. one
+     left in Code Injection, which runs first). This copy must take it over
+     and rebuild it rather than skip it. -->
+<section id="case-takeover" class="page-section">
+  <div data-site-nav data-site-nav-ready="true"
+       data-links='[{"label":"Fresh","url":"/fresh"}]'><span class="old-build">old</span></div>
+</section>
+
 <script src="../nav.js"></script>
 </body>
 </html>

@@ -23,7 +23,7 @@
      updated block onto a page that briefly still has the old one loaded (e.g.
      mid-save) can leave two copies running. The older one steps aside instead
      of the two fighting over the same bar. */
-  var VERSION = 5;
+  var VERSION = 6;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
@@ -351,6 +351,10 @@
       });
     }
 
+    debugPanel().textContent = lines.join("\n");
+  }
+
+  function debugPanel() {
     var panel = document.getElementById("sn-debug");
     if (!panel) {
       panel = document.createElement("pre");
@@ -360,7 +364,7 @@
         "font:11px/1.4 monospace;white-space:pre-wrap;word-break:break-all;";
       document.body.appendChild(panel);
     }
-    panel.textContent = lines.join("\n");
+    return panel;
   }
 
   function describe(node) {
@@ -528,13 +532,28 @@
   function start() {
     if (isEditing()) return;
 
-    var navs = document.querySelectorAll("[data-site-nav]:not([data-site-nav-ready])");
+    // A bar marked ready by an older copy of this script is taken over and
+    // rebuilt - e.g. an old copy still pasted into Code Injection, which
+    // loads before the page's Code Block and would otherwise build the bar
+    // first with its older behavior, leaving this copy nothing to do.
+    var navs = document.querySelectorAll("[data-site-nav]");
+    var found = [];
     Array.prototype.forEach.call(navs, function (el) {
-      el.setAttribute("data-site-nav-ready", "true");
+      var ready = el.getAttribute("data-site-nav-ready");
+      found.push(ready || "new");
+      if (ready !== null && Number(ready) >= VERSION) return;
+      el.setAttribute("data-site-nav-ready", String(VERSION));
       getLinks(el).then(function (links) {
         render(el, links);
       });
     });
+
+    // Replaced by the full report once a bar is built and fitted.
+    if (DEBUG && document.body && !document.getElementById("sn-debug")) {
+      debugPanel().textContent = "site-navigation v" + VERSION + " | " + (navs.length
+        ? "bars found, marked: " + found.join(", ") + " (\"true\" = built by an older copy, now rebuilt)"
+        : "no bars found on this page");
+    }
   }
 
   /* Squarespace swaps page content in without a full reload on some templates,
