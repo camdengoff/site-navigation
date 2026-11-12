@@ -87,18 +87,25 @@
      are only the fallback for a visitor's very first page, if that service
      can't be reached. */
   function inlineConfig() {
-    var data = window.SiteNavConfig;
-    if (!data) {
-      // If an older copy of the snippet was left in Code Injection as well,
-      // there are two of these. Use the one that names a settings service,
-      // otherwise the last one.
-      var blocks = document.querySelectorAll("script[id='site-nav-config']");
-      for (var i = 0; i < blocks.length; i++) {
-        var parsed = parseSettings(blocks[i].textContent);
-        if (!parsed) continue;
-        if (!data || !sourceOf(data) || sourceOf(parsed)) data = parsed;
-      }
+    // The JSON block(s) in Code Injection come first. If an older copy of
+    // the snippet was left in as well there are two: use the one that names
+    // a settings service, otherwise the last one.
+    var data = null;
+    var blocks = document.querySelectorAll("script[id='site-nav-config']");
+    for (var i = 0; i < blocks.length; i++) {
+      var parsed = parseSettings(blocks[i].textContent);
+      if (!parsed) continue;
+      if (!data || !sourceOf(data) || sourceOf(parsed)) data = parsed;
     }
+    // window.SiteNavConfig only if there's no block - and only if it really
+    // is settings: other code on a site can define a global of that name
+    // (or the browser can, for an element with that id or name), and it
+    // must never hide the block's settings service address.
+    var global = window.SiteNavConfig;
+    var usable = global && typeof global === "object" && !global.nodeType &&
+      (global.bars || global.pages || global.source);
+    if (!data && usable) data = global;
+    else if (data && usable && !sourceOf(data) && sourceOf(global)) data = global;
     var config = normalize(data);
     var source = sourceOf(data);
     if (source) config.source = source;

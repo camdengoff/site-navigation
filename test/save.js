@@ -300,6 +300,8 @@ async function browserChecks(worker) {
     footer: snippet({ bars: {}, pages: {} }) + "\n" + snippet({ source: "settings.test/", bars: {}, pages: {} })
   });
   const mp = await messy.context.newPage();
+  // Something else on the page defines a global with the same name.
+  await mp.addInitScript(() => { window.SiteNavConfig = { somethingElse: true }; });
   await openSettings(mp);
   await tab(mp, "Save");
   const mode = await mp.evaluate(() => {
