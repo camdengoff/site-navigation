@@ -59,7 +59,10 @@ const CONFIG = {
   }
 };
 
-const SITEMAP_PATHS = ["/", "/about", "/watch-online", "/sermons", "/sermons/easter", "/give", "/give/recurring", "/own-block"];
+const SITEMAP_PATHS = ["/", "/about", "/watch-online", "/sermons", "/sermons/easter", "/give", "/give/recurring", "/own-block", "/ministries/youth", "/ministries/music"];
+
+/* A bar pasted into a Code Block the old way - the same one on two pages. */
+const LEGACY_BLOCK = '<section class="page-section" id="own"><div class="sqs-block code-block"><div data-site-nav data-title="Ministries" data-title-tag="h4" data-link-tag="p" data-phone="swipe" data-bold-links="true" style="--sn-bg:#001122;--sn-height:3rem" data-links=\'[{"label":"Youth","url":"/ministries/youth"},{"label":"Music","url":"/ministries/music","newTab":true}]\'></div></div></section>';
 
 function sitemap() {
   return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
@@ -96,7 +99,7 @@ function pageHtml(url, footer) {
   const mode = url.searchParams.get("header") || "normal";
   const own = url.pathname === "/own-block"
     ? '<section class="page-section" id="own"><div class="sqs-block code-block"><div data-site-nav data-links=\'[{"label":"Own","url":"/own-block"}]\'></div></div></section>'
-    : "";
+    : url.pathname.indexOf("/ministries/") === 0 ? LEGACY_BLOCK : "";
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fake site</title>
 <style>
   :root { --sqs-site-max-width: 1200px; --sqs-site-gutter: 40px; }
@@ -279,6 +282,39 @@ async function run(browser, label, snippetFor) {
   const rows = await panelRows.jsonValue();
   check("setup: lists every page in the sitemap", SITEMAP_PATHS.every((p) => rows.includes(p)), true);
   check("setup: lists patterns from the settings too", rows.includes("/sermons/*"), true);
+
+  // Find the bars already pasted into Code Blocks around the site.
+  await page.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll(".tabs button")].find((b) => b.textContent === "Bars").click();
+    [...root.querySelectorAll("button")].find((b) => b.textContent === "Find bars already on the site").click();
+  });
+  const found = await (await page.waitForFunction(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    const bring = [...root.querySelectorAll("button")].find((b) => b.textContent === "Bring in the ticked bars");
+    if (!bring) return null;
+    return [...bring.closest(".card").querySelectorAll("label.check")].map((l) => l.textContent);
+  }, null, { timeout: 10000 })).jsonValue();
+  check("find bars: one per distinct bar, grouped across pages", found.length, 2);
+  check("find bars: same bar on two pages found once, with both pages",
+    found.some((t) => t.includes("Ministries") && t.includes("/ministries/music, /ministries/youth")), true);
+  check("find bars: the other page's bar found", found.some((t) => t.includes("Own") && t.includes("/own-block")), true);
+
+  await page.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll("button")].find((b) => b.textContent === "Bring in the ticked bars").click();
+  });
+  const imported = await page.evaluate(() => JSON.parse(localStorage.getItem("sitenav-setup-draft")).config);
+  check("find bars: brought in with every setting", imported.bars.ministries, {
+    title: "Ministries",
+    links: [{ label: "Youth", url: "/ministries/youth" }, { label: "Music", url: "/ministries/music", newTab: true }],
+    phone: "swipe",
+    boldLinks: true,
+    colors: { bg: "#001122" },
+    vars: { "--sn-height": "3rem" }
+  });
+  check("find bars: set on the pages they were on",
+    [imported.pages["/ministries/youth"], imported.pages["/ministries/music"]], ["ministries", "ministries"]);
 
   // Turn the bar on for this page from the "This page" picker.
   await page.evaluate(() => {

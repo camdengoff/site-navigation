@@ -958,7 +958,13 @@
         state.openBar = name;
         changed();
       });
-      body.appendChild(h("div", { style: "margin-bottom:12px" }, [add]));
+      var find = h("button", { className: "btn", text: "Find bars already on the site" });
+      find.title = "Looks through every page for bars pasted into Code Blocks, so you can bring them in here.";
+      find.disabled = !!(state.scan && state.scan.running) || state.paths === null;
+      find.addEventListener("click", startScan);
+      body.appendChild(h("div", { className: "row", style: "margin-bottom:12px;flex-wrap:wrap" }, [add, find]));
+
+      if (state.scan) body.appendChild(scanCard());
 
       if (!barNames().length) {
         body.appendChild(h("p", { className: "muted", text: "A bar is a label and a set of links. Make one, then choose which pages show it - several pages can share the same bar." }));
@@ -971,6 +977,108 @@
       var datalist = h("datalist", { id: "sn-paths" });
       (state.paths || []).forEach(function (p) { datalist.appendChild(h("option", { value: p })); });
       body.appendChild(datalist);
+    }
+
+    /* ---- Finding bars already pasted into Code Blocks around the site ---- */
+
+    function startScan() {
+      var paths = (state.paths || []).filter(function (p) { return !/\*$/.test(p); });
+      state.scan = { running: true, done: 0, total: paths.length, found: [], failed: 0 };
+      draw();
+      scanSite(paths, function (done, failed) {
+        state.scan.done = done;
+        state.scan.failed = failed;
+        var progress = panel.querySelector(".scan-progress");
+        if (progress) progress.textContent = scanProgressText();
+      }).then(function (found) {
+        found.forEach(function (item) {
+          item.selected = true;
+          item.match = matchingBar(item.bar);
+        });
+        state.scan.found = found;
+        state.scan.running = false;
+        draw();
+      });
+    }
+
+    function scanProgressText() {
+      var scan = state.scan;
+      return scan.running
+        ? "Looking through pages\u2026 " + scan.done + " of " + scan.total
+        : "Looked through " + scan.total + " page" + (scan.total === 1 ? "" : "s") +
+          (scan.failed ? " (" + scan.failed + " couldn't be read)" : "") + ".";
+    }
+
+    // An existing bar here with the same label and links, if there is one.
+    function matchingBar(bar) {
+      var key = sameBarKey(bar);
+      var names = barNames();
+      for (var i = 0; i < names.length; i++) {
+        if (sameBarKey(state.config.bars[names[i]]) === key) return names[i];
+      }
+      return "";
+    }
+
+    function scanCard() {
+      var scan = state.scan;
+      var card = h("div", { className: "card" });
+      card.appendChild(h("h2", { text: "Bars found on the site" }));
+      card.appendChild(h("div", { className: "muted scan-progress", text: scanProgressText() }));
+      if (scan.running) return card;
+
+      if (!scan.found.length) {
+        card.appendChild(h("p", { className: "muted", text: "No pages have a bar in a Code Block." }));
+      }
+
+      scan.found.forEach(function (item) {
+        var box = h("input", { type: "checkbox" });
+        box.checked = item.selected;
+        box.addEventListener("change", function () { item.selected = box.checked; });
+        var links = item.bar.links.map(function (l) { return l.label; }).join(" \u00b7 ");
+        card.appendChild(h("label", { className: "check", style: "align-items:flex-start;margin-top:10px" }, [
+          box,
+          h("span", {}, [
+            h("strong", { text: item.bar.title || "(no label)" }),
+            h("div", { className: "muted", text: links }),
+            h("div", { className: "muted", text: "On " + item.pages.join(", ") }),
+            item.match ? h("div", { className: "muted", text: "Same as your bar \u201c" + barLabel(item.match) + "\u201d - those pages will use it." }) : null
+          ])
+        ]));
+      });
+
+      if (scan.found.length) {
+        var bring = h("button", { className: "btn primary", text: "Bring in the ticked bars", style: "margin-top:12px" });
+        bring.addEventListener("click", importFound);
+        card.appendChild(bring);
+      }
+      var dismiss = h("button", { className: "btn", text: "Close", style: "margin:12px 0 0 6px" });
+      dismiss.addEventListener("click", function () { state.scan = null; draw(); });
+      card.appendChild(dismiss);
+      return card;
+    }
+
+    function importFound() {
+      var bars = 0;
+      var pages = 0;
+      state.scan.found.forEach(function (item) {
+        if (!item.selected) return;
+        var name = item.match || matchingBar(item.bar);
+        if (!name) {
+          name = uniqueName(slug(item.bar.title) || "bar");
+          state.config.bars[name] = item.bar;
+          bars++;
+        }
+        item.pages.forEach(function (p) {
+          if (state.config.pages[p] !== name) pages++;
+          state.config.pages[p] = name;
+        });
+      });
+      state.scan = null;
+      say(bars + " bar" + (bars === 1 ? "" : "s") + " brought in, set on " + pages + " page" + (pages === 1 ? "" : "s") +
+        ". Those pages keep showing their own Code Block until you delete it - " +
+        (source ? "after you Save here" : "after you publish these settings") +
+        ", delete each page's old Code Block and nothing changes for visitors.", "ok");
+      changed();
     }
 
     function barCard(name) {
@@ -1209,6 +1317,7 @@
     }
 
     function uniqueName(base) {
+      if (base !== "bar" && !state.config.bars[base]) return base;
       var n = 1;
       while (state.config.bars[base + "-" + n]) n++;
       return base + "-" + n;
@@ -1221,6 +1330,145 @@
     }
 
     draw();
+  }
+
+  /* Looks through the given pages for bars pasted into Code Blocks (the
+     per-page install), and turns each one back into bar settings. Pages
+     whose bars are identical are grouped into one bar. Resolves to
+     [{ bar, pages: [paths] }]. */
+  function scanSite(paths, progress) {
+    var queue = paths.slice(0, 1000);
+    var done = 0;
+    var failed = 0;
+    var groups = {};
+    var order = [];
+
+    function one(path) {
+      return fetch(path, { credentials: "same-origin" }).then(function (response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.text();
+      }).then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var markers = doc.querySelectorAll("[data-site-nav]");
+        return Promise.all(Array.prototype.map.call(markers, barFromMarker));
+      }).then(function (bars) {
+        bars.forEach(function (bar) {
+          if (!bar) return;
+          var key = sameBarKey(bar);
+          if (!groups[key]) {
+            groups[key] = { bar: bar, pages: [] };
+            order.push(key);
+          }
+          if (groups[key].pages.indexOf(path) === -1) groups[key].pages.push(path);
+        });
+      }, function () {
+        failed++;
+      }).then(function () {
+        done++;
+        progress(done, failed);
+      });
+    }
+
+    // A few pages at a time, so a big site doesn't flood the server.
+    function worker() {
+      var path = queue.shift();
+      return path === undefined ? Promise.resolve() : one(path).then(worker);
+    }
+    var workers = [];
+    for (var i = 0; i < 4; i++) workers.push(worker());
+    return Promise.all(workers).then(function () {
+      return order.map(function (key) {
+        groups[key].pages.sort();
+        return groups[key];
+      });
+    });
+  }
+
+  /* The reverse of marker(): a Code Block's attributes as bar settings. */
+  function barFromMarker(el) {
+    var read = function (name) { return el.getAttribute(name); };
+    var linksPromise;
+    if (read("data-links")) {
+      linksPromise = Promise.resolve(read("data-links"));
+    } else if (read("data-source")) {
+      linksPromise = fetch(read("data-source"), { cache: "no-cache" }).then(function (r) { return r.ok ? r.text() : "[]"; }, function () { return "[]"; });
+    } else {
+      return Promise.resolve(null);
+    }
+
+    return linksPromise.then(function (text) {
+      var data;
+      try { data = JSON.parse(text); } catch (error) { return null; }
+      var list = Array.isArray(data) ? data : data && data.links;
+      if (!Array.isArray(list)) return null;
+      var links = list.filter(function (l) {
+        return l && typeof l.label === "string" && typeof l.url === "string";
+      }).map(function (l) {
+        var link = { label: l.label, url: l.url };
+        if (l.newTab) link.newTab = true;
+        return link;
+      });
+      if (!links.length) return null;
+
+      var bar = {};
+      if (read("data-title")) bar.title = read("data-title");
+      if (read("data-title-url")) bar.titleUrl = read("data-title-url");
+      bar.links = links;
+      bar.phone = read("data-phone") === "swipe" ? "swipe" : "dropdown";
+
+      // Text style: the default (h4 + paragraph) needs nothing written down.
+      var titleTag = String(read("data-title-tag") || "").toLowerCase();
+      var linkP = read("data-link-tag") === "p";
+      if (!/^h[1-6]$/.test(titleTag) && !linkP) {
+        bar.textStyle = "plain";
+      } else if (titleTag !== "h4" || !linkP) {
+        if (/^h[1-6]$/.test(titleTag)) bar.titleTag = titleTag;
+        else bar.textStyle = "plain";
+        bar.linkTag = linkP ? "p" : "none";
+      }
+
+      if (read("data-bold-label") === "true") bar.boldLabel = true;
+      if (read("data-bold-links") === "true") bar.boldLinks = true;
+      if (read("data-sticky") === "true") bar.sticky = true;
+
+      var names = {};
+      Object.keys(COLOR_VARS).forEach(function (key) { names[COLOR_VARS[key]] = key; });
+      String(read("style") || "").split(";").forEach(function (rule) {
+        var at = rule.indexOf(":");
+        if (at < 0) return;
+        var prop = rule.slice(0, at).trim();
+        var value = rule.slice(at + 1).trim();
+        if (!SAFE_VAR.test(prop) || !value || !SAFE_VALUE.test(value)) return;
+        if (names[prop]) {
+          bar.colors = bar.colors || {};
+          bar.colors[names[prop]] = value;
+        } else {
+          bar.vars = bar.vars || {};
+          bar.vars[prop] = value;
+        }
+      });
+      return bar;
+    });
+  }
+
+  /* Two bars are the same if everything that shows matches. */
+  function sameBarKey(bar) {
+    bar = bar || {};
+    function sorted(object) {
+      return Object.keys(object || {}).sort().filter(function (k) { return object[k]; }).map(function (k) { return [k, object[k]]; });
+    }
+    return JSON.stringify([
+      bar.title || "", bar.titleUrl || "",
+      (bar.links || []).filter(function (l) { return l && l.label && l.url; }).map(function (l) { return [l.label, l.url, !!l.newTab]; }),
+      bar.phone === "swipe" ? "swipe" : "dropdown",
+      bar.textStyle === "plain" ? "plain" : "site", bar.titleTag || "", bar.linkTag || "",
+      !!bar.boldLabel, !!bar.boldLinks, !!bar.sticky,
+      sorted(bar.colors), sorted(bar.vars)
+    ]);
+  }
+
+  function slug(text) {
+    return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
   }
 
   /* Every page on the site, from Squarespace's own sitemap.xml - which lists

@@ -92,6 +92,12 @@ Prefer the command line? `worker/wrangler.toml` is set up for
 Open the settings page **on the live site** (not in the editor, where
 Squarespace turns scripts off):
 
+- **Moving over from Code Blocks?** On **Bars**, click **Find bars already
+  on the site**. It reads every page, lists each bar it finds in a Code Block
+  (one entry per distinct bar, with the pages it's on), and **Bring in the
+  ticked bars** adds them here, set on those same pages. Save, then delete the
+  old Code Blocks. A page's own Code Block wins while it's still there, so
+  visitors see no change at any point.
 - **Bars**: make a bar (label, links, colors). It previews above the panel as
   you go.
 - **Pages**: pick a bar for each page, or **No bar**. Each page name opens

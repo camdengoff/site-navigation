@@ -38,7 +38,9 @@ for no pages.
 1. Open any page of the **live** site with `?sitenav-setup` added to the end
    of the address, e.g. `https://www.example.org/?sitenav-setup`. A setup
    panel opens on the right.
-2. **Bars** tab → **+ New bar**. Give it a label (e.g. *Watch Online*), its
+2. Already have bars in Code Blocks? **Bars** tab → **Find bars already on
+   the site** brings each one in, set on the pages it's on. Otherwise:
+   **Bars** tab → **+ New bar**. Give it a label (e.g. *Watch Online*), its
    links, and how it should look. Several pages can share one bar.
 3. **Pages** tab: every page on the site is listed (read from the site's own
    `sitemap.xml`). Pick a bar next to each page that should have one. Or, on
