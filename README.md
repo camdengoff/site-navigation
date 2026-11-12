@@ -25,7 +25,10 @@ live site (`?sitenav-setup` on any page's address). The panel lists every
 page on the site, previews the bar as you go, and hands back the updated code
 to paste. The bar always lands at the very top of the page content, directly
 under Squarespace's header. See
-**[docs/SITE-WIDE-INSTALL.md](docs/SITE-WIDE-INSTALL.md)**.
+**[docs/SITE-WIDE-INSTALL.md](docs/SITE-WIDE-INSTALL.md)**. Add a small free Cloudflare Worker and the
+settings get their own page on the site with a real **Save** button, so there's
+no code to paste after the first install. See
+**[docs/SAVE-BUTTON-SETUP.md](docs/SAVE-BUTTON-SETUP.md)**.
 
 ---
 
@@ -105,6 +108,8 @@ changing an existing one, means coming back to the builder each time.
 | `docs/SQUARESPACE-INSTALL.md` | Step-by-step for putting a snippet on a page. |
 | `docs/HANDOFF.md` | Day-to-day instructions to give to whoever maintains the site. |
 | `docs/SITE-WIDE-INSTALL.md` | Installing once in Code Injection and turning the bar on per page. |
+| `docs/SAVE-BUTTON-SETUP.md` | The settings page with a Save button, and setting up its storage. |
+| `worker/` | The storage the Save button writes to: one Cloudflare Worker file. |
 
 Each page's snippet carries its own full copy of the engine, so this repo is
 only ever the source and the builder — moving or deleting it can't affect a

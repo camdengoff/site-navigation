@@ -297,7 +297,7 @@ async function run(browser, label, snippetFor) {
   // Get the code to paste back into Code Injection.
   const code = await page.evaluate(() => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    [...root.querySelectorAll(".tabs button")].find((b) => b.textContent === "Save").click();
+    [...root.querySelectorAll(".tabs button")].find((b) => b.textContent === "Publish").click();
     return root.querySelector("textarea").value;
   });
   check("setup: hands back the whole snippet", code.startsWith("<!-- Secondary navigation bar: start -->"), true);

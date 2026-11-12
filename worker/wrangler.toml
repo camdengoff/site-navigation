@@ -1,0 +1,16 @@
+# Only needed if you deploy from the command line with `npx wrangler deploy`.
+# Setting it up in the Cloudflare dashboard instead needs none of this - see
+# docs/SAVE-BUTTON-SETUP.md.
+
+name = "site-nav-settings"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[[kv_namespaces]]
+binding = "SITE_NAV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+ALLOWED_ORIGINS = "https://www.example.org,https://example.org"
+
+# The password is a secret, not a var:  npx wrangler secret put ADMIN_PASSWORD

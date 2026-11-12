@@ -81,9 +81,12 @@
      Settings
      --------------------------------------------------------------------- */
 
-  /* The live settings, from Code Injection. Either the JSON block (what the
-     setup panel writes) or, for anyone who prefers it, window.SiteNavConfig. */
-  function liveConfig() {
+  /* The settings pasted into Code Injection. Either the JSON block (what the
+     setup panel writes) or, for anyone who prefers it, window.SiteNavConfig.
+     With a "source" (the settings service the Save button writes to), these
+     are only the fallback for a visitor's very first page, if that service
+     can't be reached. */
+  function inlineConfig() {
     var data = window.SiteNavConfig;
     if (!data) {
       var el = document.getElementById("site-nav-config");
@@ -95,8 +98,68 @@
         }
       }
     }
-    return normalize(data);
+    var config = normalize(data);
+    var source = data && typeof data.source === "string" ? data.source.trim().replace(/\/+$/, "") : "";
+    if (/^https:\/\//i.test(source)) config.source = source;
+    return config;
   }
+
+  /* What's live: the last settings read from the settings service (kept in
+     this browser, so the bar shows straight away on the next page instead of
+     waiting for the network), or the pasted settings if there's no service. */
+  function liveConfig() {
+    var inline = inlineConfig();
+    if (!inline.source) return inline;
+    var saved = remote || readRemoteCache();
+    if (!saved || saved.source !== inline.source) return inline;
+    var config = normalize(saved.config);
+    config.source = inline.source;
+    return config;
+  }
+
+  var remote = null;   // { source, version, config } from the settings service
+  var REMOTE_CACHE = "sitenav-remote";
+
+  function readRemoteCache() {
+    try {
+      var data = JSON.parse(localStorage.getItem(REMOTE_CACHE) || "null");
+      return data && typeof data === "object" ? data : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function keepRemote(source, data) {
+    remote = { source: source, version: Number(data && data.version) || 0, config: (data && data.config) || {} };
+    try {
+      localStorage.setItem(REMOTE_CACHE, JSON.stringify(remote));
+    } catch (error) { /* private mode: it just fetches every page */ }
+    return remote;
+  }
+
+  /* Fetch the latest settings from the service, then re-check this page's
+     bar. Only rebuilds it if something about it actually changed. */
+  function fetchRemote() {
+    var source = inlineConfig().source;
+    if (!source) return Promise.resolve(null);
+    return fetch(source + "/config", { cache: "no-cache", credentials: "omit" })
+      .then(function (response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
+      .then(function (data) {
+        keepRemote(source, data);
+        mount();
+        remoteListeners.forEach(function (fn) { fn(); });
+        return remote;
+      })
+      .catch(function (error) {
+        warn("Couldn't load the bar settings from " + source + ". Using the last ones this browser saw.", error);
+        remoteListeners.forEach(function (fn) { fn(error); });
+        return null;
+      });
+  }
+  var remoteListeners = [];
 
   function normalize(data) {
     data = data && typeof data === "object" ? data : {};
@@ -207,7 +270,7 @@
   function hasOwnCodeBlockBar() {
     var navs = document.querySelectorAll("[data-site-nav]");
     for (var i = 0; i < navs.length; i++) {
-      if (!navs[i].closest("[data-sn-site]")) return true;
+      if (!navs[i].closest("[data-sn-site], [data-site-nav-admin]")) return true;
     }
     return false;
   }
@@ -406,18 +469,26 @@
     } catch (error) { /* private mode: the panel just won't follow you between pages */ }
   }
 
-  function readDraft() {
+  /* A draft remembers which saved version it started from, so saving it
+     can't quietly overwrite someone else's save made in the meantime. */
+  function readDraftRecord() {
     try {
-      var text = localStorage.getItem(DRAFT_KEY);
-      return text ? normalize(JSON.parse(text)) : null;
+      var data = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      if (!data || typeof data !== "object") return null;
+      return data.draft && data.config ? data : { draft: true, config: data, base: null };
     } catch (error) {
       return null;
     }
   }
 
-  function writeDraft(config) {
+  function readDraft() {
+    var record = readDraftRecord();
+    return record ? normalize(record.config) : null;
+  }
+
+  function writeDraft(config, base) {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft: true, config: config, base: base }));
     } catch (error) { /* nothing to do - the panel still works for this page */ }
   }
 
@@ -476,33 +547,102 @@
     ".color input[type=color]{width:34px;height:31px;padding:0;border:1px solid #c8c8c8;border-radius:6px;background:none;flex:none}",
     ".tab{position:fixed;right:0;top:40%;z-index:2147483646;border:0;border-radius:8px 0 0 8px;background:#111;color:#fff;",
     "padding:10px 8px;font:600 12px -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;cursor:pointer;writing-mode:vertical-rl}",
-    ".tab[hidden]{display:none}"
+    ".tab[hidden]{display:none}",
+    ".panel.inline{position:relative;top:auto;right:auto;bottom:auto;width:100%;box-shadow:none;border:1px solid #e0e0e0;border-radius:10px;z-index:auto}",
+    ".panel.inline .body{overflow:visible}",
+    ".foot .row{justify-content:space-between}",
+    ".msg{border-radius:6px;padding:8px 10px;font-size:13px;margin:10px 0}",
+    ".msg.ok{background:#e8f5e9;border:1px solid #b9dfbd}",
+    ".msg.bad{background:#fdecea;border:1px solid #f3b8b2}"
   ].join("");
 
-  function openSetup() {
-    setSetupOpen(true);
-    if (document.querySelector("[data-sn-setup]")) return;
+  var PASSWORD_KEY = "sitenav-admin-password";
 
+  function getPassword() {
+    try {
+      return localStorage.getItem(PASSWORD_KEY) || sessionStorage.getItem(PASSWORD_KEY) || "";
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function setPassword(password, remember) {
+    try {
+      localStorage.removeItem(PASSWORD_KEY);
+      sessionStorage.removeItem(PASSWORD_KEY);
+      if (password) (remember ? localStorage : sessionStorage).setItem(PASSWORD_KEY, password);
+    } catch (error) { /* it's asked for again next time */ }
+  }
+
+  /* Opens the setup panel - either laid over the right of whatever page
+     you're on (?sitenav-setup), or, given an element, inside it: the
+     settings page, a Squarespace page holding just
+     <div data-site-nav-admin></div> in a Code Block. */
+  function openSetup(container) {
+    var inline = !!(container && container.nodeType === 1);
+    if (inline) {
+      if (container.querySelector("[data-sn-setup]")) return;
+    } else {
+      setSetupOpen(true);
+      if (document.querySelector("body > [data-sn-setup]")) return;
+    }
+
+    var source = inlineConfig().source || "";
+    var draftRecord = readDraftRecord();
+    var startRemote = remote || readRemoteCache();
     var state = {
-      config: readDraft() || liveConfig(),
-      restored: !!readDraft(),
+      config: draftRecord ? normalize(draftRecord.config) : liveConfig(),
+      restored: !!draftRecord,
+      baseVersion: draftRecord && draftRecord.base !== null && draftRecord.base !== undefined
+        ? draftRecord.base
+        : (startRemote && startRemote.source === source ? startRemote.version : null),
+      loaded: !source || !!remote,   // has the latest from the service arrived yet
       tab: "pages",
       filter: "",
       paths: null,     // from sitemap.xml, once loaded
       sitemapError: "",
-      openBar: null
+      openBar: null,
+      message: "",
+      messageKind: "",
+      saving: false,
+      conflict: null
     };
 
     var host = document.createElement("div");
     host.setAttribute("data-sn-setup", "");
     var root = host.attachShadow ? host.attachShadow({ mode: "open" }) : host;
-    document.body.appendChild(host);
+    var preview = null;
+    if (inline) {
+      container.innerHTML = "";
+      // The preview sits outside the panel's shadow root, so the site's own
+      // fonts and the bar's real styles apply to it, as on a live page.
+      preview = h("div", { className: "sn-admin-preview", style: "margin-bottom:16px" });
+      container.appendChild(preview);
+      container.appendChild(host);
+    } else {
+      document.body.appendChild(host);
+    }
+
+    // The latest settings arrived from the service. If nothing's been
+    // changed here yet, show those.
+    remoteListeners.push(function (error) {
+      state.loaded = true;
+      if (!error && !state.restored) {
+        state.config = liveConfig();
+        state.baseVersion = remote.version;
+      }
+      if (error && source) {
+        state.message = "Couldn't reach the settings service, so this shows the last settings this browser saw. Saving may not work until it's back.";
+        state.messageKind = "bad";
+      }
+      draw();
+    });
 
     var style = document.createElement("style");
     style.textContent = PANEL_CSS;
     root.appendChild(style);
 
-    var panel = h("div", { className: "panel", role: "dialog", "aria-label": "Secondary navigation setup" });
+    var panel = h("div", { className: inline ? "panel inline" : "panel", role: inline ? "region" : "dialog", "aria-label": "Secondary navigation setup" });
     var tabButton = h("button", { className: "tab", hidden: true, text: "Navigation setup" });
     root.appendChild(panel);
     root.appendChild(tabButton);
@@ -526,17 +666,38 @@
        redrawn unless the change came from typing in a box (redrawing would
        take the cursor out of it). */
     function changed(redraw) {
-      writeDraft(state.config);
+      writeDraft(state.config, state.baseVersion);
       state.restored = true;
+      if (state.messageKind === "ok") state.message = "";
       currentKey = "";
       mount();
+      drawPreview();
       if (redraw !== false) draw();
-      else drawInstall();
+      else drawFoot();
+    }
+
+    /* On the settings page: the bar being edited, drawn for real. */
+    function drawPreview() {
+      if (!preview) return;
+      preview.innerHTML = "";
+      var name = state.openBar && state.config.bars[state.openBar] ? state.openBar : barNames()[0];
+      var bar = name && state.config.bars[name];
+      if (!bar) return;
+      var links = (bar.links || []).filter(function (l) { return l && l.label && l.url; });
+      preview.appendChild(h("div", { style: "font:12px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#666;margin-bottom:6px", text: "Preview: " + barLabel(name) }));
+      if (!links.length) return;
+      var copy = clone(bar);
+      copy.links = links;
+      var wrap = h("div", { className: "sn-site", "data-align": "full" });
+      wrap.appendChild(marker(copy));
+      preview.appendChild(wrap);
+      if (window.SiteNav && typeof window.SiteNav.refresh === "function") window.SiteNav.refresh();
     }
 
     function draw() {
       var scrollTop = body ? body.scrollTop : 0;
       panel.innerHTML = "";
+      foot = null;
 
       var minimise = h("button", { className: "icon", title: "Hide the panel", text: "\u2013" });
       minimise.addEventListener("click", function () {
@@ -551,22 +712,25 @@
         currentKey = "";
         mount();
       });
-      panel.appendChild(h("div", { className: "top" }, [
-        h("h1", { text: "Secondary navigation" }), minimise, close
-      ]));
+      panel.appendChild(h("div", { className: "top" }, inline
+        ? [h("h1", { text: "Secondary navigation settings" })]
+        : [h("h1", { text: "Secondary navigation" }), minimise, close]));
 
-      // The one setting people come here for: this page's bar.
-      var path = tidyPath(window.location.pathname);
-      panel.appendChild(h("div", { className: "here" }, [
-        h("div", { className: "muted", text: "This page" }),
-        h("div", { className: "path", text: path }),
-        h("div", { className: "row", style: "margin-top:6px" }, [
-          barSelect(path, "grow")
-        ])
-      ]));
+      // The one setting people come here for: this page's bar. (Not on the
+      // settings page itself - nobody wants a bar there.)
+      if (!inline) {
+        var path = tidyPath(window.location.pathname);
+        panel.appendChild(h("div", { className: "here" }, [
+          h("div", { className: "muted", text: "This page" }),
+          h("div", { className: "path", text: path }),
+          h("div", { className: "row", style: "margin-top:6px" }, [
+            barSelect(path, "grow")
+          ])
+        ]));
+      }
 
       var tabs = h("div", { className: "tabs", role: "tablist" });
-      [["pages", "Pages"], ["bars", "Bars"], ["install", "Save"]].forEach(function (pair) {
+      [["pages", "Pages"], ["bars", "Bars"], ["install", source ? "Save" : "Publish"]].forEach(function (pair) {
         var button = h("button", { role: "tab", text: pair[1] });
         button.setAttribute("aria-selected", state.tab === pair[0] ? "true" : "false");
         button.addEventListener("click", function () { state.tab = pair[0]; draw(); });
@@ -576,16 +740,94 @@
 
       body = h("div", { className: "body" });
       panel.appendChild(body);
+      if (state.message) body.appendChild(h("div", { className: "msg " + state.messageKind, role: "status", text: state.message }));
       if (state.tab === "pages") drawPages();
       else if (state.tab === "bars") drawBars();
       else drawInstall();
       body.scrollTop = scrollTop;
 
-      panel.appendChild(h("div", { className: "foot", text: state.restored
-        ? "You have changes that aren't live yet. Copy the code from Save into Code Injection to publish them."
-        : "Showing the settings that are live on the site." }));
+      foot = h("div", { className: "foot" });
+      panel.appendChild(foot);
+      drawFoot();
+      drawPreview();
     }
     var body = null;
+    var foot = null;
+
+    /* Where things stand, and - with a settings service - the Save button. */
+    function drawFoot() {
+      if (!foot) return;
+      foot.innerHTML = "";
+      var text = !state.loaded
+        ? "Loading the live settings\u2026"
+        : state.restored
+          ? (source ? "You have unsaved changes." : "You have changes that aren't live yet. Copy the code from Publish into Code Injection to make them live.")
+          : "Showing the settings that are live on the site.";
+      if (!source) {
+        foot.textContent = text;
+        return;
+      }
+      var save = h("button", { className: "btn primary", text: state.saving ? "Saving\u2026" : "Save" });
+      save.disabled = state.saving || !state.loaded || !state.restored;
+      save.addEventListener("click", function () { doSave(false); });
+      foot.appendChild(h("div", { className: "row" }, [h("span", { className: "grow", text: text }), save]));
+    }
+
+    function say(message, kind) {
+      state.message = message;
+      state.messageKind = kind || "";
+    }
+
+    /* Saves straight to the settings service: live on every page at once
+       (Cloudflare can take up to a minute to show it everywhere). */
+    function doSave(force) {
+      if (!getPassword()) {
+        state.tab = "install";
+        say("Enter the settings password to save.", "bad");
+        return draw();
+      }
+      state.saving = true;
+      say("");
+      draw();
+      fetch(source + "/config", {
+        method: "PUT",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + getPassword() },
+        body: JSON.stringify({ baseVersion: state.baseVersion, force: !!force, config: tidyConfig(state.config) })
+      }).then(function (response) {
+        return response.json().catch(function () { return {}; }).then(function (data) {
+          return { status: response.status, data: data };
+        });
+      }).then(function (result) {
+        state.saving = false;
+        state.conflict = null;
+        if (result.status === 200) {
+          keepRemote(source, result.data);
+          clearDraft();
+          state.config = liveConfig();
+          state.baseVersion = remote.version;
+          state.restored = false;
+          say("Saved. It's live on the site now - give it up to a minute to show everywhere.", "ok");
+          currentKey = "";
+          mount();
+        } else if (result.status === 401) {
+          setPassword("");
+          state.tab = "install";
+          say("That password wasn't right.", "bad");
+        } else if (result.status === 409) {
+          state.tab = "install";
+          state.conflict = result.data && result.data.current;
+          say("Someone else saved changes after you opened these settings.", "bad");
+        } else {
+          say((result.data && result.data.error) || "Couldn't save (error " + result.status + ").", "bad");
+        }
+        draw();
+      }, function () {
+        state.saving = false;
+        say("Couldn't reach the settings service. Your changes are kept in this browser - try again in a moment.", "bad");
+        draw();
+      });
+    }
 
     function barNames() {
       return Object.keys(state.config.bars);
@@ -689,7 +931,9 @@
           var isRule = /\*$/.test(p);
           var link = isRule
             ? h("a", { text: p, title: "Pattern" })
-            : h("a", { href: p, text: p, title: "Open this page (setup stays open)" });
+            : inline
+              ? h("a", { href: p + "?" + SETUP_PARAM, target: "_blank", text: p, title: "Open this page with setup on it, to preview" })
+              : h("a", { href: p, text: p, title: "Open this page (setup stays open)" });
           var item = h("li", {}, [link, barSelect(p)]);
           if (state.config.pages[p]) item.className = "on";
           if (rules.indexOf(p) !== -1) {
@@ -835,8 +1079,7 @@
     }
 
     function drawInstall() {
-      if (state.tab !== "install" || !body) return;
-      body.innerHTML = "";
+      if (source) return drawSave();
 
       var code = installCode(state.config);
       body.appendChild(h("p", { style: "margin-top:0", text: code.full
@@ -868,6 +1111,62 @@
         });
         body.appendChild(discard);
         body.appendChild(h("p", { className: "muted", text: "Once the new code is live, the draft clears itself the next time you open setup." }));
+      }
+    }
+
+    /* With a settings service: the password, and Save. */
+    function drawSave() {
+      body.appendChild(h("p", { style: "margin-top:0", text: "Saving puts your changes live on every page of the site straight away. No code to copy." }));
+
+      var password = h("input", { type: "password", placeholder: "Settings password", value: getPassword() });
+      password.setAttribute("autocomplete", "current-password");
+      var remember = h("input", { type: "checkbox" });
+      try { remember.checked = !!localStorage.getItem(PASSWORD_KEY); } catch (error) { /* ignore */ }
+      function store() { setPassword(password.value, remember.checked); }
+      password.addEventListener("input", store);
+      remember.addEventListener("change", store);
+      body.appendChild(h("label", { text: "Password" }));
+      body.appendChild(password);
+      body.appendChild(h("label", { className: "check" }, [remember, document.createTextNode("Remember on this device")]));
+
+      var save = h("button", { className: "btn primary", text: state.saving ? "Saving\u2026" : "Save", style: "margin-top:8px" });
+      save.disabled = state.saving || !state.loaded;
+      save.addEventListener("click", function () { store(); doSave(false); });
+      body.appendChild(save);
+
+      if (state.conflict) {
+        var theirs = h("button", { className: "btn", text: "Load their version (lose my changes)" });
+        theirs.addEventListener("click", function () {
+          keepRemote(source, state.conflict);
+          clearDraft();
+          state.config = liveConfig();
+          state.baseVersion = remote.version;
+          state.restored = false;
+          state.conflict = null;
+          say("Loaded the latest saved settings.", "ok");
+          currentKey = "";
+          mount();
+          draw();
+        });
+        var mine = h("button", { className: "btn danger", text: "Save mine over theirs" });
+        mine.addEventListener("click", function () { doSave(true); });
+        body.appendChild(h("div", { className: "row", style: "margin-top:12px;flex-wrap:wrap" }, [theirs, mine]));
+      }
+
+      if (state.restored) {
+        var discard = h("button", { className: "btn danger", text: "Discard my changes", style: "margin-top:16px" });
+        discard.addEventListener("click", function () {
+          if (!window.confirm("Throw away your changes and go back to what's live on the site?")) return;
+          clearDraft();
+          state.config = liveConfig();
+          state.baseVersion = remote ? remote.version : state.baseVersion;
+          state.restored = false;
+          say("");
+          currentKey = "";
+          mount();
+          draw();
+        });
+        body.appendChild(h("div", {}, [discard]));
       }
     }
 
@@ -916,7 +1215,7 @@
     }
 
     // A draft that matches what's now live is no longer a draft.
-    if (state.restored && JSON.stringify(state.config) === JSON.stringify(liveConfig())) {
+    if (state.restored && JSON.stringify(tidyConfig(state.config)) === JSON.stringify(tidyConfig(liveConfig()))) {
       clearDraft();
       state.restored = false;
     }
@@ -966,7 +1265,8 @@
 
   /* What gets pasted back into Code Injection. With this script's own text
      to hand, the whole snippet; otherwise just the settings block. */
-  function installCode(config) {
+  /* The settings as saved: empty links dropped, pages in order. */
+  function tidyConfig(config) {
     var tidy = { bars: {}, pages: {} };
     Object.keys(config.bars).forEach(function (name) {
       var bar = clone(config.bars[name]);
@@ -976,7 +1276,11 @@
     });
     Object.keys(config.pages).sort().forEach(function (p) { tidy.pages[p] = config.pages[p]; });
     if (config.settings && Object.keys(config.settings).length) tidy.settings = config.settings;
+    return tidy;
+  }
 
+  function installCode(config) {
+    var tidy = tidyConfig(config);
     var json = JSON.stringify(tidy, null, 2).replace(/</g, "\\u003c");
     // "\x3c" is "<" - written that way so this script can itself sit inline
     // in a <script> tag without these strings ending it early.
@@ -1086,9 +1390,12 @@
      Start
      --------------------------------------------------------------------- */
   function begin() {
-    if (wantsSetup() && !isEditing()) openSetup();
+    var admin = document.querySelector("[data-site-nav-admin]");
+    if (admin && !isEditing()) openSetup(admin);
+    else if (wantsSetup() && !isEditing()) openSetup();
     mount();
     watch();
+    fetchRemote();
   }
 
   if (document.readyState === "loading") {
@@ -1099,7 +1406,7 @@
 
   window.SiteNavSite = {
     version: VERSION,
-    refresh: function () { currentKey = ""; mount(); },
+    refresh: function () { currentKey = ""; mount(); return fetchRemote(); },
     setup: openSetup,
     barFor: function (pathname) { return barFor(activeConfig(), pathname || window.location.pathname); }
   };

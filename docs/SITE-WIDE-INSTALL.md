@@ -9,6 +9,10 @@ The bar always goes in the same place: **the very top of the page content,
 directly under Squarespace's own header and main navigation**, above the
 page's first section.
 
+> **Want a Save button instead of pasting?** Add a settings page whose Save
+> button updates the whole site with no code to paste. It needs one small free
+> service. See [SAVE-BUTTON-SETUP.md](SAVE-BUTTON-SETUP.md).
+
 ---
 
 ## What you need
@@ -46,7 +50,7 @@ for no pages.
    - **Patterns**: add `/sermons/*` to cover every page under `/sermons/`,
      like each post of a blog. A page's own setting always wins over a
      pattern, so a single post can still be set to *No bar*.
-4. **Save** tab → **Copy code**.
+4. **Publish** tab → **Copy code**.
 5. Back in **Code Injection → Footer**, select everything from
    `<!-- Secondary navigation bar: start -->` to
    `<!-- Secondary navigation bar: end -->`, paste over it, and **Save**.

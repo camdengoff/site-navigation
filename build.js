@@ -89,7 +89,7 @@ async function buildSiteWide() {
     throw new Error("The site-wide script contains </script or <!--, which would break it inline");
   }
 
-  const empty = '{\n  "bars": {},\n  "pages": {}\n}';
+  const empty = '{\n  "source": "",\n  "bars": {},\n  "pages": {}\n}';
   const snippet = [
     "<!-- Secondary navigation bar: start -->",
     "<style data-site-nav-style>" + css.styles + "</style>",
