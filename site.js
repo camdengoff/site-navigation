@@ -652,14 +652,16 @@
       tabButton.hidden = true;
     });
 
-    loadPaths().then(function (paths) {
-      state.paths = paths;
-      draw();
-    }, function (error) {
-      state.paths = [];
-      state.sitemapError = String(error && error.message || error);
-      draw();
-    });
+    rememberPage(true);
+    function refreshPaths() {
+      state.paths = null;
+      loadPaths().then(function (result) {
+        state.paths = result.paths;
+        state.sitemapError = result.sitemapError;
+        draw();
+      });
+    }
+    refreshPaths();
 
     /* Every change goes through here: saved as a draft (so it survives
        moving to another page), previewed on this page, and the panel
@@ -885,7 +887,9 @@
         state.filter = search.value;
         drawList();
       });
-      body.appendChild(search);
+      var refresh = h("button", { className: "btn", text: "Refresh list", title: "Look for pages again - e.g. one you just added" });
+      refresh.addEventListener("click", refreshPaths);
+      body.appendChild(h("div", { className: "row" }, [h("div", { className: "grow" }, [search]), refresh]));
 
       var list = h("ul", { className: "pages" });
       var status = h("div", { className: "muted", style: "margin-top:8px" });
@@ -924,7 +928,7 @@
 
         var MAX = 400;
         status.textContent = (state.sitemapError
-          ? "Couldn't read this site's sitemap.xml (" + state.sitemapError + "). Add pages by hand below. "
+          ? "Couldn't read this site's sitemap.xml (" + state.sitemapError + "), so this only lists pages linked from the site's menus. "
           : "") + shown.length + " of " + all.length + " pages" + (shown.length > MAX ? ", showing the first " + MAX + " - filter to narrow it down" : "");
 
         shown.slice(0, MAX).forEach(function (p) {
@@ -1471,15 +1475,26 @@
     return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
   }
 
-  /* Every page on the site, from Squarespace's own sitemap.xml - which lists
-     every enabled page and collection item, including ones not in the main
-     navigation. Follows a sitemap index one level down if there is one. */
+  /* Every page on the site we can find, from three places:
+       - Squarespace's own sitemap.xml: every enabled page and collection
+         item - but Squarespace caches it, so a page added a moment ago can
+         be missing for a while, and it leaves out pages hidden from search
+         engines.
+       - the links in the site's menus (header, footer, mobile menu), read
+         from this page and the home page - this catches new pages as soon
+         as they're in the navigation.
+       - pages opened in this browser since setup was first used here, so a
+         page that's in neither shows up once you've visited it.
+     Resolves to { paths, sitemapError }. */
   function loadPaths() {
-    function fetchXml(url) {
+    function fetchText(url) {
       return fetch(url, { credentials: "same-origin", cache: "no-cache" }).then(function (response) {
         if (!response.ok) throw new Error("HTTP " + response.status);
         return response.text();
-      }).then(function (text) {
+      });
+    }
+    function fetchXml(url) {
+      return fetchText(url).then(function (text) {
         return new DOMParser().parseFromString(text, "application/xml");
       });
     }
@@ -1491,16 +1506,27 @@
       }).filter(Boolean);
     }
 
-    return fetchXml("/sitemap.xml").then(function (doc) {
+    var sitemapError = "";
+    var fromSitemap = fetchXml("/sitemap.xml").then(function (doc) {
       var children = locs(doc, "sitemap").filter(sameOrigin).slice(0, 20);
       if (!children.length) return locs(doc, "url");
       return Promise.all(children.map(function (url) {
         return fetchXml(url).then(function (child) { return locs(child, "url"); }, function () { return []; });
       })).then(function (lists) { return [].concat.apply([], lists); });
-    }).then(function (urls) {
+    }).catch(function (error) {
+      sitemapError = String(error && error.message || error);
+      return [];
+    });
+
+    var fromHome = fetchText("/").then(function (html) {
+      return menuLinks(new DOMParser().parseFromString(html, "text/html"));
+    }, function () { return []; });
+
+    return Promise.all([fromSitemap, fromHome]).then(function (lists) {
+      var urls = lists[0].concat(lists[1], menuLinks(document), knownPages());
       var seen = {};
-      return urls.map(localPath).filter(function (p) {
-        if (!p || seen[p]) return false;
+      var paths = urls.map(localPath).filter(function (p) {
+        if (!p || seen[p] || !looksLikePage(p)) return false;
         seen[p] = true;
         return true;
       }).sort(function (a, b) {
@@ -1508,7 +1534,51 @@
         var da = a.split("/").length, db = b.split("/").length;
         return da - db || (a < b ? -1 : a > b ? 1 : 0);
       });
+      return { paths: paths, sitemapError: sitemapError };
     });
+  }
+
+  /* Same-site links in a page's menus. Squarespace's mobile menu holds
+     every page in the navigation, including the ones inside folders. */
+  function menuLinks(doc) {
+    var anchors = doc.querySelectorAll("header a[href], nav a[href], footer a[href], .header-menu a[href], [data-folder] a[href]");
+    return Array.prototype.map.call(anchors, function (a) {
+      var href = a.getAttribute("href");
+      try {
+        return new URL(href, window.location.href).href;
+      } catch (error) {
+        return "";
+      }
+    }).filter(sameOrigin);
+  }
+
+  /* Squarespace's own non-page addresses, and files. */
+  function looksLikePage(path) {
+    return !/^\/(cart|checkout|account|config|commerce|api|s|static|search)(\/|$)/.test(path) &&
+      !/\.[a-z0-9]{2,5}$/.test(path);
+  }
+
+  var KNOWN_KEY = "sitenav-known-pages";
+
+  function knownPages() {
+    try {
+      var list = JSON.parse(localStorage.getItem(KNOWN_KEY) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /* Only in a browser where setup has been opened - visitors' browsers
+     never keep this list. */
+  function rememberPage(start) {
+    try {
+      if (!start && localStorage.getItem(KNOWN_KEY) === null) return;
+      var list = knownPages();
+      var path = tidyPath(window.location.pathname);
+      if (list.indexOf(path) === -1) list.push(path);
+      localStorage.setItem(KNOWN_KEY, JSON.stringify(list.slice(-2000)));
+    } catch (error) { /* fine - the other two sources still work */ }
   }
 
   /* What gets pasted back into Code Injection. With this script's own text
@@ -1638,6 +1708,7 @@
      Start
      --------------------------------------------------------------------- */
   function begin() {
+    rememberPage(false);
     var admin = document.querySelector("[data-site-nav-admin]");
     if (admin && !isEditing()) openSetup(admin);
     else if (wantsSetup() && !isEditing()) openSetup();

@@ -154,9 +154,12 @@ up as an unlisted rule at the top of the Pages tab).
   well, that first section can end up with more space at its top than
   before. If it looks off, turn the header's transparency off for that page,
   or reduce the first section's top padding.
-- **Pages missing from the list.** The list comes from `sitemap.xml`, which
-  leaves out disabled pages and pages hidden from search engines. Add those
-  by hand with **Add a page or a pattern**.
+- **Pages missing from the list.** The list combines `sitemap.xml`, the
+  links in the site's menus, and pages you've opened in this browser since
+  using setup. Squarespace caches `sitemap.xml`, so a brand-new page that
+  isn't in a menu yet can be missing for a while, and the sitemap leaves out
+  disabled pages and pages hidden from search engines. Open the page once,
+  then click **Refresh list**, or add it with **Add a page or a pattern**.
 - **Squarespace's own "scroll back" header**, which hides as you scroll down,
   leaves a gap above a sticky bar while it's hidden.
 - **Check in a private window.** The setup panel shows your unsaved draft;

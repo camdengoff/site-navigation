@@ -110,7 +110,7 @@ function pageHtml(url, footer) {
 </style></head>
 <body class="">
 <div id="siteWrapper">
-  <header id="header" class="header">Site name &middot; Main navigation</header>
+  <header id="header" class="header">Site name &middot; <a href="/new-page">New page</a> <a href="/cart">Cart</a></header>
   <main id="page" role="main">
     <article class="sections" id="sections">
       ${own}
@@ -282,6 +282,8 @@ async function run(browser, label, snippetFor) {
   const rows = await panelRows.jsonValue();
   check("setup: lists every page in the sitemap", SITEMAP_PATHS.every((p) => rows.includes(p)), true);
   check("setup: lists patterns from the settings too", rows.includes("/sermons/*"), true);
+  check("setup: lists pages in the site's menus that the sitemap doesn't have yet", rows.includes("/new-page"), true);
+  check("setup: leaves out Squarespace's own non-page links", rows.includes("/cart"), false);
 
   // Find the bars already pasted into Code Blocks around the site.
   await page.evaluate(() => {
