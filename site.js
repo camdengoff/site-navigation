@@ -94,13 +94,8 @@
       // otherwise the last one.
       var blocks = document.querySelectorAll("script[id='site-nav-config']");
       for (var i = 0; i < blocks.length; i++) {
-        var parsed;
-        try {
-          parsed = JSON.parse(blocks[i].textContent);
-        } catch (error) {
-          warn("The site-nav-config settings aren't valid JSON. Re-copy them from the setup panel.", error);
-          continue;
-        }
+        var parsed = parseSettings(blocks[i].textContent);
+        if (!parsed) continue;
         if (!data || !sourceOf(data) || sourceOf(parsed)) data = parsed;
       }
     }
@@ -108,6 +103,23 @@
     var source = sourceOf(data);
     if (source) config.source = source;
     return config;
+  }
+
+  /* Some editors turn straight quotes into curly ones on paste, which
+     breaks JSON - so try again with them straightened before giving up. */
+  var settingsProblem = "";
+  function parseSettings(text) {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      try {
+        return JSON.parse(String(text).replace(/[\u201c\u201d\u201e\u2033]/g, '"').replace(/[\u2018\u2019]/g, "'").replace(/\u00a0/g, " "));
+      } catch (again) {
+        settingsProblem = String(again && again.message || again);
+        warn("The site-nav-config settings in Code Injection aren't valid JSON.", again);
+        return null;
+      }
+    }
   }
 
   /* The settings service's address, if one is set. Forgiving about how it
@@ -1208,6 +1220,7 @@
     function drawInstall() {
       if (source) return drawSave();
 
+      if (settingsProblem) body.appendChild(h("div", { className: "msg bad", text: "The settings block in Code Injection (site-nav-config) can't be read, so the worker address in it is being ignored. The error was: " + settingsProblem + ". Check for a missing comma or quote near the address." }));
       body.appendChild(h("div", { className: "msg bad", text: "Saving straight to the site isn't set up, so publishing means pasting code. To get a Save button instead, put your settings service's address in \"source\" in Code Injection - see SAVE-BUTTON-SETUP.md. If you already did, check Code Injection doesn't still have an older copy of this snippet without it." }));
 
       var code = installCode(state.config);
