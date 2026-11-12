@@ -89,19 +89,34 @@
   function inlineConfig() {
     var data = window.SiteNavConfig;
     if (!data) {
-      var el = document.getElementById("site-nav-config");
-      if (el) {
+      // If an older copy of the snippet was left in Code Injection as well,
+      // there are two of these. Use the one that names a settings service,
+      // otherwise the last one.
+      var blocks = document.querySelectorAll("script[id='site-nav-config']");
+      for (var i = 0; i < blocks.length; i++) {
+        var parsed;
         try {
-          data = JSON.parse(el.textContent);
+          parsed = JSON.parse(blocks[i].textContent);
         } catch (error) {
           warn("The site-nav-config settings aren't valid JSON. Re-copy them from the setup panel.", error);
+          continue;
         }
+        if (!data || !sourceOf(data) || sourceOf(parsed)) data = parsed;
       }
     }
     var config = normalize(data);
-    var source = data && typeof data.source === "string" ? data.source.trim().replace(/\/+$/, "") : "";
-    if (/^https:\/\//i.test(source)) config.source = source;
+    var source = sourceOf(data);
+    if (source) config.source = source;
     return config;
+  }
+
+  /* The settings service's address, if one is set. Forgiving about how it
+     was typed: "name.workers.dev", with or without https:// or a slash. */
+  function sourceOf(data) {
+    var source = data && typeof data.source === "string" ? data.source.trim().replace(/\/+$/, "") : "";
+    if (!source) return "";
+    if (!/^[a-z]+:\/\//i.test(source)) source = "https://" + source;
+    return /^https:\/\/[^\s/]+(\/[^\s]*)?$/i.test(source) ? source : "";
   }
 
   /* What's live: the last settings read from the settings service (kept in
@@ -1192,6 +1207,8 @@
 
     function drawInstall() {
       if (source) return drawSave();
+
+      body.appendChild(h("div", { className: "msg bad", text: "Saving straight to the site isn't set up, so publishing means pasting code. To get a Save button instead, put your settings service's address in \"source\" in Code Injection - see SAVE-BUTTON-SETUP.md. If you already did, check Code Injection doesn't still have an older copy of this snippet without it." }));
 
       var code = installCode(state.config);
       body.appendChild(h("p", { style: "margin-top:0", text: code.full

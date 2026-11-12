@@ -120,7 +120,7 @@ async function site(browser, worker, env, options) {
     if (url.pathname === "/sitemap.xml") {
       return route.fulfill({ contentType: "application/xml", body: "<urlset>" + ["/", "/settings", "/watch-online", "/sermons"].map((p) => "<url><loc>" + SITE + p + "</loc></url>").join("") + "</urlset>" });
     }
-    return route.fulfill({ contentType: "text/html", body: pageHtml(url, snippet(opts.inline)) });
+    return route.fulfill({ contentType: "text/html", body: pageHtml(url, opts.footer || snippet(opts.inline)) });
   });
   await context.route(SERVICE + "/**", async (route) => {
     if (opts.down) return route.fulfill({ status: 503, body: "down" });
@@ -293,6 +293,21 @@ async function browserChecks(worker) {
   const later = await site(browser, worker, env);
   const lp = await later.context.newPage();
   check("visitors get the latest save", await barTitle(lp, SITE + "/watch-online"), "Watch Live");
+
+  /* ---- An old copy of the snippet left in Code Injection, and the
+         address typed without https:// - still connects ---- */
+  const messy = await site(browser, worker, env, {
+    footer: snippet({ bars: {}, pages: {} }) + "\n" + snippet({ source: "settings.test/", bars: {}, pages: {} })
+  });
+  const mp = await messy.context.newPage();
+  await openSettings(mp);
+  await tab(mp, "Save");
+  const mode = await mp.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    return { password: !!root.querySelector("input[type=password]"), code: !!root.querySelector("textarea") };
+  });
+  check("old copy left behind + bare address: still gets the Save button, no code", mode, { password: true, code: false });
+  check("old copy left behind: visitors still get the saved bar", await barTitle(mp, SITE + "/watch-online"), "Watch Live");
 
   await browser.close();
 }
