@@ -587,7 +587,29 @@
     ".foot .row{justify-content:space-between}",
     ".msg{border-radius:6px;padding:8px 10px;font-size:13px;margin:10px 0}",
     ".msg.ok{background:#e8f5e9;border:1px solid #b9dfbd}",
-    ".msg.bad{background:#fdecea;border:1px solid #f3b8b2}"
+    ".msg.bad{background:#fdecea;border:1px solid #f3b8b2}",
+    ".here .path{font-size:13px}",
+    ".pages li{padding:0}",
+    ".pagebtn{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;text-align:left;border:0;background:none;padding:9px 4px;cursor:pointer;font:inherit;color:inherit;border-radius:6px}",
+    ".pagebtn:hover{background:#f4f5f7}",
+    ".pathname{flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}",
+    ".chip{font-size:12px;padding:2px 8px;border-radius:999px;background:#111;color:#fff;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}",
+    ".chip.off{background:#eef0f3;color:#666}",
+    ".chip.found{background:#e8f5e9;color:#1b5e20}",
+    ".pages a.visit{flex:none;font-family:inherit}",
+    ".visit{color:#666;text-decoration:none;padding:6px 8px;border-radius:6px;font-size:14px}",
+    ".visit:hover{background:#f4f5f7;color:#000}",
+    ".foot input[type=password]{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid #c8c8c8;border-radius:6px}",
+    ".overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2147483647;display:flex;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto;",
+    "font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1a1a1a}",
+    ".overlay[hidden]{display:none}",
+    ".modal{background:#fff;border-radius:12px;width:min(760px,100%);box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;max-height:92vh}",
+    ".mtop{display:flex;align-items:flex-start;gap:8px;padding:14px 16px;border-bottom:1px solid #e5e5e5}",
+    ".mtop h2{margin:0;font-size:16px;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all}",
+    ".mbody{padding:4px 16px 16px;overflow:auto}",
+    ".mfoot{display:flex;gap:8px;align-items:center;padding:12px 16px;border-top:1px solid #e5e5e5}",
+    ".pv{border:1px dashed #d0d0d0;border-radius:8px;overflow:hidden;background:#fff;font-family:initial;color:#111}",
+    ".pv .empty{padding:14px}"
   ].join("");
 
   var PASSWORD_KEY = "sitenav-admin-password";
@@ -611,7 +633,10 @@
   /* Opens the setup panel - either laid over the right of whatever page
      you're on (?sitenav-setup), or, given an element, inside it: the
      settings page, a Squarespace page holding just
-     <div data-site-nav-admin></div> in a Code Block. */
+     <div data-site-nav-admin></div> in a Code Block.
+
+     One list of the site's pages. Clicking a page opens a popup with its bar:
+     a preview, and everything about the bar to edit. */
   function openSetup(container) {
     var inline = !!(container && container.nodeType === 1);
     if (inline) {
@@ -631,11 +656,12 @@
         ? draftRecord.base
         : (startRemote && startRemote.source === source ? startRemote.version : null),
       loaded: !source || !!remote,   // has the latest from the service arrived yet
-      tab: "pages",
       filter: "",
-      paths: null,     // from sitemap.xml, once loaded
+      paths: null,     // every page we could find, once loaded
       sitemapError: "",
-      openBar: null,
+      editing: null,   // the page (or pattern) whose popup is open; "#publish" for the code popup
+      scan: null,      // finding bars already on the site
+      foundOn: {},     // pages whose bar came from one of their Code Blocks
       message: "",
       messageKind: "",
       saving: false,
@@ -645,13 +671,8 @@
     var host = document.createElement("div");
     host.setAttribute("data-sn-setup", "");
     var root = host.attachShadow ? host.attachShadow({ mode: "open" }) : host;
-    var preview = null;
     if (inline) {
       container.innerHTML = "";
-      // The preview sits outside the panel's shadow root, so the site's own
-      // fonts and the bar's real styles apply to it, as on a live page.
-      preview = h("div", { className: "sn-admin-preview", style: "margin-bottom:16px" });
-      container.appendChild(preview);
       container.appendChild(host);
     } else {
       document.body.appendChild(host);
@@ -666,81 +687,88 @@
         state.baseVersion = remote.version;
       }
       if (error && source) {
-        state.message = "Couldn't reach the settings service, so this shows the last settings this browser saw. Saving may not work until it's back.";
-        state.messageKind = "bad";
+        say("Couldn't reach the settings service, so this shows the last settings this browser saw. Saving may not work until it's back.", "bad");
       }
       draw();
     });
 
     var style = document.createElement("style");
-    style.textContent = PANEL_CSS;
+    // The bar's own styles go in too, so the preview in the popup is the
+    // real thing - plus the site's own heading and paragraph type, which
+    // can't reach in here on their own.
+    var navCss = document.querySelector("style[data-site-nav-style]");
+    style.textContent = PANEL_CSS + (navCss ? navCss.textContent : "") + siteTypeCss();
     root.appendChild(style);
 
     var panel = h("div", { className: inline ? "panel inline" : "panel", role: inline ? "region" : "dialog", "aria-label": "Secondary navigation setup" });
     var tabButton = h("button", { className: "tab", hidden: true, text: "Navigation setup" });
+    var overlay = h("div", { className: "overlay", hidden: true });
     root.appendChild(panel);
     root.appendChild(tabButton);
+    root.appendChild(overlay);
 
     tabButton.addEventListener("click", function () {
       panel.hidden = false;
       tabButton.hidden = true;
     });
+    overlay.addEventListener("click", function (event) {
+      if (event.target === overlay) closeEditor();
+    });
+    root.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && state.editing) closeEditor();
+    });
 
     rememberPage(true);
     function refreshPaths() {
       state.paths = null;
+      draw();
       loadPaths().then(function (result) {
         state.paths = result.paths;
         state.sitemapError = result.sitemapError;
         draw();
       });
     }
-    refreshPaths();
 
     /* Every change goes through here: saved as a draft (so it survives
-       moving to another page), previewed on this page, and the panel
-       redrawn unless the change came from typing in a box (redrawing would
-       take the cursor out of it). */
+       moving to another page), previewed on the page and in the popup, and
+       the panel redrawn unless the change came from typing in a box
+       (redrawing would take the cursor out of it). */
     function changed(redraw) {
       writeDraft(state.config, state.baseVersion);
       state.restored = true;
       if (state.messageKind === "ok") state.message = "";
       currentKey = "";
       mount();
-      drawPreview();
-      if (redraw !== false) draw();
-      else drawFoot();
+      if (redraw !== false) {
+        draw();
+      } else {
+        drawFoot();
+        drawPopupPreview();
+      }
     }
 
-    /* On the settings page: the bar being edited, drawn for real. */
-    function drawPreview() {
-      if (!preview) return;
-      preview.innerHTML = "";
-      var name = state.openBar && state.config.bars[state.openBar] ? state.openBar : barNames()[0];
-      var bar = name && state.config.bars[name];
-      if (!bar) return;
-      var links = (bar.links || []).filter(function (l) { return l && l.label && l.url; });
-      preview.appendChild(h("div", { style: "font:12px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#666;margin-bottom:6px", text: "Preview: " + barLabel(name) }));
-      if (!links.length) return;
-      var copy = clone(bar);
-      copy.links = links;
-      var wrap = h("div", { className: "sn-site", "data-align": "full" });
-      wrap.appendChild(marker(copy));
-      preview.appendChild(wrap);
-      if (window.SiteNav && typeof window.SiteNav.refresh === "function") window.SiteNav.refresh();
+    function say(message, kind) {
+      state.message = message;
+      state.messageKind = kind || "";
     }
+
+    /* ---------------- The panel: one list of pages ---------------- */
+
+    var body = null;
+    var foot = null;
+    var list = null;
+    var status = null;
 
     function draw() {
       var scrollTop = body ? body.scrollTop : 0;
       panel.innerHTML = "";
-      foot = null;
 
-      var minimise = h("button", { className: "icon", title: "Hide the panel", text: "\u2013" });
+      var minimise = h("button", { className: "icon", title: "Hide the panel", text: "–" });
       minimise.addEventListener("click", function () {
         panel.hidden = true;
         tabButton.hidden = false;
       });
-      var close = h("button", { className: "icon", title: "Close setup", text: "\u00d7" });
+      var close = h("button", { className: "icon", title: "Close setup", text: "×" });
       close.addEventListener("click", function () {
         if (state.restored && !window.confirm("Close setup? Your changes are kept as a draft in this browser and come back next time you open it.")) return;
         setSetupOpen(false);
@@ -749,77 +777,526 @@
         mount();
       });
       panel.appendChild(h("div", { className: "top" }, inline
-        ? [h("h1", { text: "Secondary navigation settings" })]
+        ? [h("h1", { text: "Secondary navigation" })]
         : [h("h1", { text: "Secondary navigation" }), minimise, close]));
 
-      // The one setting people come here for: this page's bar. (Not on the
-      // settings page itself - nobody wants a bar there.)
+      // On a live page: straight to this page's bar.
       if (!inline) {
-        var path = tidyPath(window.location.pathname);
+        var here = tidyPath(window.location.pathname);
+        var editHere = h("button", { className: "btn primary", text: "Edit this page's bar" });
+        editHere.addEventListener("click", function () { openEditor(here); });
         panel.appendChild(h("div", { className: "here" }, [
           h("div", { className: "muted", text: "This page" }),
-          h("div", { className: "path", text: path }),
-          h("div", { className: "row", style: "margin-top:6px" }, [
-            barSelect(path, "grow")
+          h("div", { className: "row", style: "margin-top:4px" }, [
+            h("div", { className: "path grow", text: here + " · " + describe(here) }),
+            editHere
           ])
         ]));
       }
 
-      var tabs = h("div", { className: "tabs", role: "tablist" });
-      [["pages", "Pages"], ["bars", "Bars"], ["install", source ? "Save" : "Publish"]].forEach(function (pair) {
-        var button = h("button", { role: "tab", text: pair[1] });
-        button.setAttribute("aria-selected", state.tab === pair[0] ? "true" : "false");
-        button.addEventListener("click", function () { state.tab = pair[0]; draw(); });
-        tabs.appendChild(button);
-      });
-      panel.appendChild(tabs);
-
       body = h("div", { className: "body" });
       panel.appendChild(body);
+
       if (state.message) body.appendChild(h("div", { className: "msg " + state.messageKind, role: "status", text: state.message }));
-      if (state.tab === "pages") drawPages();
-      else if (state.tab === "bars") drawBars();
-      else drawInstall();
+      if (state.conflict) body.appendChild(conflictButtons());
+
+      var search = h("input", { type: "search", placeholder: "Filter pages…", value: state.filter });
+      search.setAttribute("aria-label", "Filter pages");
+      search.addEventListener("input", function () {
+        state.filter = search.value;
+        drawList();
+      });
+      var refresh = h("button", { className: "btn", text: "Refresh", title: "Look for pages again - e.g. one you just added" });
+      refresh.addEventListener("click", refreshPaths);
+      body.appendChild(h("div", { className: "row" }, [h("div", { className: "grow" }, [search]), refresh]));
+
+      var find = h("button", { className: "btn", text: state.scan && state.scan.running ? "Finding bars…" : "Find bars already on the site" });
+      find.title = "Looks through every page for bars pasted into Code Blocks, and connects each one to its page here.";
+      find.disabled = !!(state.scan && state.scan.running) || state.paths === null;
+      find.addEventListener("click", startScan);
+      body.appendChild(h("div", { className: "row", style: "margin-top:8px" }, [find]));
+
+      status = h("div", { className: "muted", style: "margin-top:10px" });
+      body.appendChild(status);
+      list = h("ul", { className: "pages" });
+      body.appendChild(list);
+      drawList();
+
+      var addInput = h("input", { type: "text", placeholder: "/new-page or /sermons/*" });
+      var addButton = h("button", { className: "btn", text: "Add" });
+      addButton.addEventListener("click", function () {
+        var rule = tidyRule(addInput.value);
+        if (!addInput.value.trim() || (rule.charAt(0) !== "/" && rule !== "*")) return;
+        if (!(rule in state.config.pages) && (!state.paths || state.paths.indexOf(rule) === -1)) {
+          state.config.pages[rule] = false;
+          changed();
+        }
+        openEditor(rule);
+      });
+      body.appendChild(h("div", { style: "margin-top:16px" }, [
+        h("label", { text: "Missing a page? Add it, or a pattern" }),
+        h("div", { className: "muted", text: "Ending in /* covers every page under that address, e.g. each post of a blog. A page's own setting always wins over a pattern." }),
+        h("div", { className: "row", style: "margin-top:6px" }, [h("div", { className: "grow" }, [addInput]), addButton])
+      ]));
+
       body.scrollTop = scrollTop;
 
       foot = h("div", { className: "foot" });
       panel.appendChild(foot);
       drawFoot();
-      drawPreview();
+      drawPopup();
     }
-    var body = null;
-    var foot = null;
 
-    /* Where things stand, and - with a settings service - the Save button. */
+    /* What a page currently shows, in a few words. */
+    function describe(path) {
+      var value = state.config.pages[path];
+      if (typeof value === "string" && state.config.bars[value]) return barLabel(value);
+      if (value && typeof value === "object") return value.title || "Bar";
+      if (value === undefined) {
+        var rule = ruleFor(path);
+        if (rule) return barLabel(state.config.pages[rule]) + " (from " + rule + ")";
+      }
+      return "No bar";
+    }
+
+    // The most specific "/prefix/*" rule covering a path, if any.
+    function ruleFor(path) {
+      var best = "";
+      Object.keys(state.config.pages).forEach(function (rule) {
+        if (!/\*$/.test(rule) || typeof state.config.pages[rule] !== "string") return;
+        var prefix = rule.replace(/\/?\*$/, "");
+        var matches = prefix === "" || path === prefix || path.indexOf(prefix + "/") === 0;
+        if (matches && rule !== path && prefix.length >= best.replace(/\/?\*$/, "").length) best = rule;
+      });
+      return best;
+    }
+
+    function drawList() {
+      list.innerHTML = "";
+      if (state.paths === null) {
+        status.textContent = "Finding the site's pages…";
+        return;
+      }
+
+      // Patterns and pages that only exist in the settings first, then
+      // every page found on the site.
+      var rules = Object.keys(state.config.pages).filter(function (rule) {
+        return state.paths.indexOf(rule) === -1;
+      }).sort();
+      var all = rules.concat(state.paths);
+      var needle = state.filter.trim().toLowerCase();
+      var shown = all.filter(function (p) { return !needle || p.indexOf(needle) !== -1; });
+
+      var MAX = 400;
+      status.textContent = (state.sitemapError
+        ? "Couldn't read this site's sitemap.xml (" + state.sitemapError + "), so this only lists pages linked from the site's menus. "
+        : "") + "Click a page to set up its bar. " + shown.length + " of " + all.length + " pages" +
+        (shown.length > MAX ? ", showing the first " + MAX + " - filter to narrow it down" : "") + ".";
+
+      shown.slice(0, MAX).forEach(function (p) {
+        var text = describe(p);
+        var on = text !== "No bar";
+        var item = h("li", { className: on ? "on" : "" });
+        var open = h("button", { className: "pagebtn" }, [
+          h("span", { className: "pathname", text: p }),
+          h("span", { className: on ? "chip" : "chip off", text: text }),
+          state.foundOn[p] ? h("span", { className: "chip found", text: "found on page" }) : null
+        ]);
+        open.setAttribute("aria-label", "Set up the bar for " + p);
+        open.addEventListener("click", function () { openEditor(p); });
+        item.appendChild(open);
+        if (!/\*$/.test(p)) {
+          var visit = inline
+            ? h("a", { className: "visit", href: p + "?" + SETUP_PARAM, target: "_blank", title: "Open this page, with setup on it", text: "↗" })
+            : h("a", { className: "visit", href: p, title: "Go to this page (setup stays open)", text: "↗" });
+          item.appendChild(visit);
+        }
+        list.appendChild(item);
+      });
+    }
+
+    function barNames() {
+      return Object.keys(state.config.bars);
+    }
+
+    function barLabel(name) {
+      var bar = state.config.bars[name];
+      if (!bar) return name;
+      if (bar.title) return bar.title;
+      var first = (bar.links || []).filter(function (l) { return l && l.label; })[0];
+      return first ? "Bar: " + first.label + "…" : "Untitled bar";
+    }
+
+    function pagesUsing(name) {
+      return Object.keys(state.config.pages).filter(function (p) { return state.config.pages[p] === name; });
+    }
+
+    /* ---------------- The popup for one page ---------------- */
+
+    var popupPreview = null;
+
+    function openEditor(path) {
+      state.editing = path;
+      drawPopup();
+    }
+
+    function closeEditor() {
+      state.editing = null;
+      draw();
+    }
+
+    function drawPopup() {
+      overlay.innerHTML = "";
+      popupPreview = null;
+      if (!state.editing) {
+        overlay.hidden = true;
+        return;
+      }
+      overlay.hidden = false;
+      if (state.editing === "#publish") return drawPublishPopup();
+
+      var path = state.editing;
+      var isRule = /\*$/.test(path);
+      var value = state.config.pages[path];
+      var inherited = value === undefined ? ruleFor(path) : "";
+      var name = typeof value === "string" && state.config.bars[value]
+        ? value
+        : (inherited ? state.config.pages[inherited] : "");
+
+      var modal = h("div", { className: "modal", role: "dialog", "aria-label": "Bar for " + path });
+      var closeButton = h("button", { className: "icon", title: "Close", text: "×" });
+      closeButton.addEventListener("click", closeEditor);
+      modal.appendChild(h("div", { className: "mtop" }, [
+        h("div", { className: "grow" }, [
+          h("div", { className: "muted", text: isRule ? "Pattern" : "Page" }),
+          h("h2", { text: path })
+        ]),
+        closeButton
+      ]));
+
+      var mbody = h("div", { className: "mbody" });
+      modal.appendChild(mbody);
+
+      // Which bar this page shows.
+      var select = h("select");
+      select.setAttribute("aria-label", "Bar on this page");
+      select.appendChild(h("option", { value: "", text: "No bar" }));
+      barNames().forEach(function (n) { select.appendChild(h("option", { value: n, text: barLabel(n) })); });
+      select.appendChild(h("option", { value: "#new", text: "+ A new bar" }));
+      select.value = name;
+      select.addEventListener("change", function () {
+        var choice = select.value;
+        if (choice === "#new") {
+          choice = uniqueName("bar");
+          state.config.bars[choice] = { title: "", links: [{ label: "", url: isRule ? "" : path }], phone: "dropdown" };
+        }
+        if (choice) state.config.pages[path] = choice;
+        else if (ruleFor(path)) state.config.pages[path] = false;   // off, despite a wider pattern
+        else delete state.config.pages[path];
+        changed(false);
+        drawPopup();
+      });
+      mbody.appendChild(h("label", { text: isRule ? "Bar on every page under this address" : "Bar on this page" }));
+      mbody.appendChild(select);
+      if (inherited) {
+        mbody.appendChild(h("div", { className: "muted", style: "margin-top:4px", text: "Comes from the pattern " + inherited + ". Choosing here sets this page on its own." }));
+      }
+      if (state.foundOn[path]) {
+        mbody.appendChild(h("div", { className: "muted", style: "margin-top:4px", text: "Found in a Code Block on this page. Once these settings are saved, that Code Block can be deleted." }));
+      }
+
+      if (name) {
+        var bar = state.config.bars[name];
+
+        popupPreview = h("div", { className: "pv" });
+        mbody.appendChild(h("label", { text: "Preview" }));
+        mbody.appendChild(popupPreview);
+        drawPopupPreview();
+
+        var others = pagesUsing(name).filter(function (p) { return p !== path; });
+        if (others.length) {
+          var copy = h("button", { className: "btn", text: "Make a separate copy for this page" });
+          copy.addEventListener("click", function () {
+            var fresh = uniqueName(slug(bar.title) || "bar");
+            state.config.bars[fresh] = clone(bar);
+            state.config.pages[path] = fresh;
+            changed(false);
+            drawPopup();
+          });
+          mbody.appendChild(h("div", { className: "note", style: "margin-top:12px" }, [
+            h("div", { text: "This bar is also on " + others.length + " other page" + (others.length === 1 ? "" : "s") + " (" + others.slice(0, 4).join(", ") + (others.length > 4 ? ", …" : "") + "). Changes here change it there too." }),
+            h("div", { style: "margin-top:6px" }, [copy])
+          ]));
+        }
+
+        barFields(bar).forEach(function (el) { mbody.appendChild(el); });
+
+        var linked = h("button", { className: "btn", text: "Also put this bar on the pages it links to" });
+        linked.addEventListener("click", function () {
+          var count = 0;
+          bar.links.concat(bar.titleUrl ? [{ url: bar.titleUrl }] : []).forEach(function (link) {
+            var p = localPath(link.url);
+            if (p && state.config.pages[p] !== name) { state.config.pages[p] = name; count++; }
+          });
+          say(count ? "Turned this bar on for " + count + " more page" + (count === 1 ? "" : "s") + "." : "It's already on every page it links to.", "ok");
+          changed(false);
+          drawPopup();
+        });
+        mbody.appendChild(h("div", { style: "margin-top:16px" }, [linked]));
+
+        var del = h("button", { className: "btn danger", text: "Delete this bar from every page" });
+        del.addEventListener("click", function () {
+          var using = pagesUsing(name).length;
+          if (!window.confirm("Delete this bar? It comes off " + using + " page" + (using === 1 ? "" : "s") + ".")) return;
+          delete state.config.bars[name];
+          Object.keys(state.config.pages).forEach(function (p) {
+            if (state.config.pages[p] === name) delete state.config.pages[p];
+          });
+          changed(false);
+          drawPopup();
+        });
+        mbody.appendChild(h("div", { style: "margin-top:16px" }, [del]));
+      }
+
+      var done = h("button", { className: "btn primary", text: "Done" });
+      done.addEventListener("click", closeEditor);
+      modal.appendChild(h("div", { className: "mfoot" }, [
+        h("span", { className: "muted grow", text: source ? "Changes are kept until you click Save." : "Changes are kept until you publish." }),
+        done
+      ]));
+
+      overlay.appendChild(modal);
+      select.focus();
+    }
+
+    /* The bar as it'll look, drawn by the real bar code. */
+    function drawPopupPreview() {
+      if (!popupPreview) return;
+      popupPreview.innerHTML = "";
+      var value = state.config.pages[state.editing];
+      var name = typeof value === "string" ? value : (value === undefined ? state.config.pages[ruleFor(state.editing)] : "");
+      var bar = name && state.config.bars[name];
+      if (!bar) return;
+      var links = (bar.links || []).filter(function (l) { return l && l.label && l.url; });
+      if (!links.length) {
+        popupPreview.appendChild(h("div", { className: "muted empty", text: "Add a link below to see the bar." }));
+        return;
+      }
+      var copy = clone(bar);
+      copy.links = links;
+      var wrap = h("div", { className: "sn-site", "data-align": "full" });
+      var el = marker(copy);
+      wrap.appendChild(el);
+      popupPreview.appendChild(wrap);
+      if (window.SiteNav && typeof window.SiteNav.build === "function") window.SiteNav.build(el);
+    }
+
+    /* Everything about a bar. Typing updates it in place. */
+    function barFields(bar) {
+      var out = [];
+      out.push(field("Label", bar.title, function (v) { if (v) bar.title = v; else delete bar.title; }));
+      out.push(field("Label links to (optional)", bar.titleUrl, function (v) { if (v) bar.titleUrl = v; else delete bar.titleUrl; }, "sn-paths"));
+
+      out.push(h("label", { text: "Links" }));
+      bar.links = Array.isArray(bar.links) ? bar.links : [];
+      var links = h("div");
+      out.push(links);
+      function drawLinks() {
+        links.innerHTML = "";
+        bar.links.forEach(function (link, index) {
+          var label = h("input", { type: "text", placeholder: "Label", value: link.label || "" });
+          label.setAttribute("aria-label", "Link " + (index + 1) + " label");
+          label.addEventListener("input", function () { link.label = label.value; changed(false); });
+          var url = h("input", { type: "text", placeholder: "/page or https://…", value: link.url || "" });
+          url.setAttribute("aria-label", "Link " + (index + 1) + " address");
+          url.setAttribute("list", "sn-paths");
+          url.addEventListener("input", function () { link.url = url.value.trim(); changed(false); });
+
+          var up = h("button", { className: "icon", title: "Move up", text: "↑" });
+          up.disabled = index === 0;
+          up.addEventListener("click", function () { move(bar.links, index, -1); changed(false); drawLinks(); });
+          var down = h("button", { className: "icon", title: "Move down", text: "↓" });
+          down.disabled = index === bar.links.length - 1;
+          down.addEventListener("click", function () { move(bar.links, index, 1); changed(false); drawLinks(); });
+          var newTab = h("input", { type: "checkbox", title: "Open in a new tab" });
+          newTab.checked = !!link.newTab;
+          newTab.addEventListener("change", function () { if (newTab.checked) link.newTab = true; else delete link.newTab; changed(false); });
+          var remove = h("button", { className: "icon", title: "Remove link", text: "×" });
+          remove.addEventListener("click", function () { bar.links.splice(index, 1); changed(false); drawLinks(); });
+
+          links.appendChild(h("div", { className: "link" }, [label, url, h("div", { className: "tools" }, [newTab, up, down, remove])]));
+        });
+      }
+      drawLinks();
+      out.push(h("div", { className: "muted", text: "The checkbox opens that link in a new tab." }));
+      var addLink = h("button", { className: "btn", text: "+ Add link", style: "margin-top:6px" });
+      addLink.addEventListener("click", function () { bar.links.push({ label: "", url: "" }); changed(false); drawLinks(); });
+      out.push(addLink);
+
+      var datalist = h("datalist", { id: "sn-paths" });
+      (state.paths || []).forEach(function (p) { datalist.appendChild(h("option", { value: p })); });
+      out.push(datalist);
+
+      out.push(choice("On phones", bar.phone === "swipe" ? "swipe" : "dropdown",
+        [["dropdown", "Dropdown"], ["swipe", "Swipeable row"]],
+        function (v) { bar.phone = v; }));
+      out.push(choice("Text style", bar.textStyle === "plain" ? "plain" : "site",
+        [["site", "Site styles (Heading 4 + paragraph)"], ["plain", "Plain"]],
+        function (v) { if (v === "plain") bar.textStyle = "plain"; else delete bar.textStyle; delete bar.titleTag; delete bar.linkTag; }));
+      out.push(checkbox("Bold label", bar.boldLabel, function (v) { if (v) bar.boldLabel = true; else delete bar.boldLabel; }));
+      out.push(checkbox("Bold links", bar.boldLinks, function (v) { if (v) bar.boldLinks = true; else delete bar.boldLinks; }));
+      out.push(checkbox("Stick to top when scrolling", bar.sticky, function (v) { if (v) bar.sticky = true; else delete bar.sticky; }));
+
+      [["bg", "Bar background", "#ececec"], ["text", "Text", "#111111"], ["hover", "Link color on hover", "#111111"]].forEach(function (c) {
+        out.push(colorField(c[1], bar, c[0], c[2]));
+      });
+      return out;
+    }
+
+    /* ---------------- Finding bars already on the site ---------------- */
+
+    function startScan() {
+      var paths = (state.paths || []).filter(function (p) { return !/\*$/.test(p); });
+      state.scan = { running: true, done: 0, total: paths.length, failed: 0 };
+      say("");
+      draw();
+      scanSite(paths, function (done, failed) {
+        state.scan.done = done;
+        state.scan.failed = failed;
+        if (status) status.textContent = "Looking through pages for bars… " + done + " of " + paths.length;
+      }).then(function (found) {
+        var made = 0;
+        var pages = 0;
+        found.forEach(function (item) {
+          var name = matchingBar(item.bar);
+          if (!name) {
+            name = uniqueName(slug(item.bar.title) || "bar");
+            state.config.bars[name] = item.bar;
+            made++;
+          }
+          item.pages.forEach(function (p) {
+            state.config.pages[p] = name;
+            state.foundOn[p] = true;
+            pages++;
+          });
+        });
+        var failed = state.scan.failed;
+        state.scan = null;
+        if (!found.length) {
+          say("Looked through " + paths.length + " pages and found no bars in Code Blocks." + (failed ? " (" + failed + " couldn't be read.)" : ""), "ok");
+          return draw();
+        }
+        say("Found " + found.length + " bar" + (found.length === 1 ? "" : "s") + " on " + pages + " page" + (pages === 1 ? "" : "s") +
+          " and connected each one to its page" + (made < found.length ? " (" + (found.length - made) + " matched a bar you already had)" : "") +
+          ". They're marked “found on page” below." + (failed ? " " + failed + " page(s) couldn't be read." : "") +
+          " Each page keeps showing its own Code Block until you delete it, so " +
+          (source ? "Save, then delete the old Code Blocks." : "publish, then delete the old Code Blocks."), "ok");
+        writeDraft(state.config, state.baseVersion);
+        state.restored = true;
+        currentKey = "";
+        mount();
+        draw();
+      });
+    }
+
+    // An existing bar here with the same label and links, if there is one.
+    function matchingBar(bar) {
+      var key = sameBarKey(bar);
+      var names = barNames();
+      for (var i = 0; i < names.length; i++) {
+        if (sameBarKey(state.config.bars[names[i]]) === key) return names[i];
+      }
+      return "";
+    }
+
+    /* ---------------- Saving ---------------- */
+
+    /* Where things stand, and the Save (or Publish) button. */
     function drawFoot() {
       if (!foot) return;
       foot.innerHTML = "";
       var text = !state.loaded
-        ? "Loading the live settings\u2026"
-        : state.restored
-          ? (source ? "You have unsaved changes." : "You have changes that aren't live yet. Copy the code from Publish into Code Injection to make them live.")
-          : "Showing the settings that are live on the site.";
+        ? "Loading the live settings…"
+        : state.restored ? "You have unsaved changes." : "Everything here is live on the site.";
+
+      var row = h("div", { className: "row", style: "flex-wrap:wrap" }, [h("span", { className: "grow", text: text })]);
+      foot.appendChild(row);
+
+      if (state.restored) {
+        var discard = h("button", { className: "btn", text: "Discard" });
+        discard.title = "Throw away your changes and go back to what's live";
+        discard.addEventListener("click", function () {
+          if (!window.confirm("Throw away your changes and go back to what's live on the site?")) return;
+          clearDraft();
+          state.config = liveConfig();
+          state.baseVersion = remote ? remote.version : state.baseVersion;
+          state.restored = false;
+          state.foundOn = {};
+          state.conflict = null;
+          say("");
+          currentKey = "";
+          mount();
+          draw();
+        });
+        row.appendChild(discard);
+      }
+
       if (!source) {
-        foot.textContent = text;
+        var publish = h("button", { className: "btn primary", text: "Publish…" });
+        publish.addEventListener("click", function () { openEditor("#publish"); });
+        row.appendChild(publish);
         return;
       }
-      var save = h("button", { className: "btn primary", text: state.saving ? "Saving\u2026" : "Save" });
+
+      if (!getPassword()) {
+        var password = h("input", { type: "password", placeholder: "Settings password" });
+        password.setAttribute("aria-label", "Settings password");
+        password.setAttribute("autocomplete", "current-password");
+        var remember = h("input", { type: "checkbox" });
+        password.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") go();
+        });
+        row.appendChild(h("div", { style: "flex:1 1 160px" }, [password]));
+        row.appendChild(h("label", { className: "check", style: "margin:0" }, [remember, document.createTextNode("Remember")]));
+      }
+      var save = h("button", { className: "btn primary", text: state.saving ? "Saving…" : "Save" });
       save.disabled = state.saving || !state.loaded || !state.restored;
-      save.addEventListener("click", function () { doSave(false); });
-      foot.appendChild(h("div", { className: "row" }, [h("span", { className: "grow", text: text }), save]));
+      function go() {
+        if (password) {
+          if (!password.value) return password.focus();
+          setPassword(password.value, remember.checked);
+        }
+        doSave(false);
+      }
+      save.addEventListener("click", go);
+      row.appendChild(save);
     }
 
-    function say(message, kind) {
-      state.message = message;
-      state.messageKind = kind || "";
+    function conflictButtons() {
+      var theirs = h("button", { className: "btn", text: "Load their version (lose my changes)" });
+      theirs.addEventListener("click", function () {
+        keepRemote(source, state.conflict);
+        clearDraft();
+        state.config = liveConfig();
+        state.baseVersion = remote.version;
+        state.restored = false;
+        state.conflict = null;
+        state.foundOn = {};
+        say("Loaded the latest saved settings.", "ok");
+        currentKey = "";
+        mount();
+        draw();
+      });
+      var mine = h("button", { className: "btn danger", text: "Save mine over theirs" });
+      mine.addEventListener("click", function () { doSave(true); });
+      return h("div", { className: "row", style: "margin-bottom:10px;flex-wrap:wrap" }, [theirs, mine]);
     }
 
     /* Saves straight to the settings service: live on every page at once
        (Cloudflare can take up to a minute to show it everywhere). */
     function doSave(force) {
       if (!getPassword()) {
-        state.tab = "install";
-        say("Enter the settings password to save.", "bad");
+        say("Enter the settings password, then click Save.", "bad");
         return draw();
       }
       state.saving = true;
@@ -848,10 +1325,8 @@
           mount();
         } else if (result.status === 401) {
           setPassword("");
-          state.tab = "install";
           say("That password wasn't right.", "bad");
         } else if (result.status === 409) {
-          state.tab = "install";
           state.conflict = result.data && result.data.current;
           say("Someone else saved changes after you opened these settings.", "bad");
         } else {
@@ -865,378 +1340,25 @@
       });
     }
 
-    function barNames() {
-      return Object.keys(state.config.bars);
-    }
+    /* Without a settings service: the code to paste into Code Injection. */
+    function drawPublishPopup() {
+      var modal = h("div", { className: "modal", role: "dialog", "aria-label": "Publish" });
+      var closeButton = h("button", { className: "icon", title: "Close", text: "×" });
+      closeButton.addEventListener("click", closeEditor);
+      modal.appendChild(h("div", { className: "mtop" }, [h("h2", { className: "grow", text: "Publish" }), closeButton]));
+      var mbody = h("div", { className: "mbody" });
+      modal.appendChild(mbody);
 
-    /* A page's choice: off, or one of the bars. */
-    function barSelect(path, className) {
-      var select = h("select", { className: className || "" });
-      select.setAttribute("aria-label", "Bar for " + path);
-      select.appendChild(h("option", { value: "", text: "No bar" }));
-      barNames().forEach(function (name) {
-        select.appendChild(h("option", { value: name, text: barLabel(name) }));
-      });
-      var value = state.config.pages[path];
-      select.value = typeof value === "string" && state.config.bars[value] ? value : "";
-      if (value === undefined) {
-        // Not listed: show what a wider "/prefix/*" rule gives it, if any.
-        var inherited = ruleBarName(path);
-        if (inherited) select.value = inherited;
-      }
-      select.addEventListener("change", function () {
-        if (select.value) state.config.pages[path] = select.value;
-        else if (ruleBarName(path, true)) state.config.pages[path] = false; // switch off despite a wider rule
-        else delete state.config.pages[path];
-        changed();
-      });
-      return select;
-    }
-
-    /* The bar a wider "/prefix/*" rule gives this path, if any. */
-    function ruleBarName(path, ignoreExact) {
-      var copy = { bars: state.config.bars, pages: {} };
-      Object.keys(state.config.pages).forEach(function (rule) {
-        if (/\*$/.test(rule) || (!ignoreExact && rule === path)) copy.pages[rule] = state.config.pages[rule];
-      });
-      var bar = barFor(copy, path);
-      if (!bar) return "";
-      var names = barNames();
-      for (var i = 0; i < names.length; i++) if (state.config.bars[names[i]] === bar) return names[i];
-      return "";
-    }
-
-    function barLabel(name) {
-      var bar = state.config.bars[name];
-      return bar && bar.title ? bar.title + " (" + name + ")" : name;
-    }
-
-    function drawPages() {
-      if (!barNames().length) {
-        body.appendChild(h("div", { className: "note", text: "There are no bars yet. Make one under Bars, then come back to pick the pages it shows on." }));
-      }
-
-      var search = h("input", { type: "search", placeholder: "Filter pages\u2026", value: state.filter });
-      search.addEventListener("input", function () {
-        state.filter = search.value;
-        drawList();
-      });
-      var refresh = h("button", { className: "btn", text: "Refresh list", title: "Look for pages again - e.g. one you just added" });
-      refresh.addEventListener("click", refreshPaths);
-      body.appendChild(h("div", { className: "row" }, [h("div", { className: "grow" }, [search]), refresh]));
-
-      var list = h("ul", { className: "pages" });
-      var status = h("div", { className: "muted", style: "margin-top:8px" });
-      body.appendChild(status);
-      body.appendChild(list);
-
-      var addRow = h("div", { style: "margin-top:16px" });
-      var addInput = h("input", { type: "text", placeholder: "/sermons/*" });
-      var addButton = h("button", { className: "btn", text: "Add" });
-      addButton.addEventListener("click", function () {
-        var rule = tidyRule(addInput.value);
-        if (!addInput.value.trim() || rule.charAt(0) !== "/") return;
-        if (!(rule in state.config.pages)) state.config.pages[rule] = barNames()[0] || false;
-        changed();
-      });
-      addRow.appendChild(h("label", { text: "Add a page or a pattern" }));
-      addRow.appendChild(h("div", { className: "muted", text: "Ending in /* covers every page under that address, e.g. each post of a blog. A page's own setting always wins over a pattern." }));
-      addRow.appendChild(h("div", { className: "row", style: "margin-top:6px" }, [h("div", { className: "grow" }, [addInput]), addButton]));
-      body.appendChild(addRow);
-
-      function drawList() {
-        list.innerHTML = "";
-        if (state.paths === null) {
-          status.textContent = "Loading the site's pages\u2026";
-          return;
-        }
-
-        // Every page in the sitemap, plus anything in the settings that
-        // isn't (patterns, unlisted pages) - those first.
-        var rules = Object.keys(state.config.pages).filter(function (rule) {
-          return state.paths.indexOf(rule) === -1;
-        }).sort();
-        var all = rules.concat(state.paths);
-        var needle = state.filter.trim().toLowerCase();
-        var shown = all.filter(function (p) { return !needle || p.indexOf(needle) !== -1; });
-
-        var MAX = 400;
-        status.textContent = (state.sitemapError
-          ? "Couldn't read this site's sitemap.xml (" + state.sitemapError + "), so this only lists pages linked from the site's menus. "
-          : "") + shown.length + " of " + all.length + " pages" + (shown.length > MAX ? ", showing the first " + MAX + " - filter to narrow it down" : "");
-
-        shown.slice(0, MAX).forEach(function (p) {
-          var isRule = /\*$/.test(p);
-          var link = isRule
-            ? h("a", { text: p, title: "Pattern" })
-            : inline
-              ? h("a", { href: p + "?" + SETUP_PARAM, target: "_blank", text: p, title: "Open this page with setup on it, to preview" })
-              : h("a", { href: p, text: p, title: "Open this page (setup stays open)" });
-          var item = h("li", {}, [link, barSelect(p)]);
-          if (state.config.pages[p]) item.className = "on";
-          if (rules.indexOf(p) !== -1) {
-            var remove = h("button", { className: "icon", title: "Remove this rule", text: "\u00d7" });
-            remove.addEventListener("click", function () {
-              delete state.config.pages[p];
-              changed();
-            });
-            item.appendChild(remove);
-          }
-          list.appendChild(item);
-        });
-      }
-      drawList();
-    }
-
-    function drawBars() {
-      var add = h("button", { className: "btn primary", text: "+ New bar" });
-      add.addEventListener("click", function () {
-        var name = uniqueName("bar");
-        state.config.bars[name] = { title: "", links: [{ label: "", url: "" }], phone: "dropdown" };
-        state.openBar = name;
-        changed();
-      });
-      var find = h("button", { className: "btn", text: "Find bars already on the site" });
-      find.title = "Looks through every page for bars pasted into Code Blocks, so you can bring them in here.";
-      find.disabled = !!(state.scan && state.scan.running) || state.paths === null;
-      find.addEventListener("click", startScan);
-      body.appendChild(h("div", { className: "row", style: "margin-bottom:12px;flex-wrap:wrap" }, [add, find]));
-
-      if (state.scan) body.appendChild(scanCard());
-
-      if (!barNames().length) {
-        body.appendChild(h("p", { className: "muted", text: "A bar is a label and a set of links. Make one, then choose which pages show it - several pages can share the same bar." }));
-      }
-
-      barNames().forEach(function (name) {
-        body.appendChild(barCard(name));
-      });
-
-      var datalist = h("datalist", { id: "sn-paths" });
-      (state.paths || []).forEach(function (p) { datalist.appendChild(h("option", { value: p })); });
-      body.appendChild(datalist);
-    }
-
-    /* ---- Finding bars already pasted into Code Blocks around the site ---- */
-
-    function startScan() {
-      var paths = (state.paths || []).filter(function (p) { return !/\*$/.test(p); });
-      state.scan = { running: true, done: 0, total: paths.length, found: [], failed: 0 };
-      draw();
-      scanSite(paths, function (done, failed) {
-        state.scan.done = done;
-        state.scan.failed = failed;
-        var progress = panel.querySelector(".scan-progress");
-        if (progress) progress.textContent = scanProgressText();
-      }).then(function (found) {
-        found.forEach(function (item) {
-          item.selected = true;
-          item.match = matchingBar(item.bar);
-        });
-        state.scan.found = found;
-        state.scan.running = false;
-        draw();
-      });
-    }
-
-    function scanProgressText() {
-      var scan = state.scan;
-      return scan.running
-        ? "Looking through pages\u2026 " + scan.done + " of " + scan.total
-        : "Looked through " + scan.total + " page" + (scan.total === 1 ? "" : "s") +
-          (scan.failed ? " (" + scan.failed + " couldn't be read)" : "") + ".";
-    }
-
-    // An existing bar here with the same label and links, if there is one.
-    function matchingBar(bar) {
-      var key = sameBarKey(bar);
-      var names = barNames();
-      for (var i = 0; i < names.length; i++) {
-        if (sameBarKey(state.config.bars[names[i]]) === key) return names[i];
-      }
-      return "";
-    }
-
-    function scanCard() {
-      var scan = state.scan;
-      var card = h("div", { className: "card" });
-      card.appendChild(h("h2", { text: "Bars found on the site" }));
-      card.appendChild(h("div", { className: "muted scan-progress", text: scanProgressText() }));
-      if (scan.running) return card;
-
-      if (!scan.found.length) {
-        card.appendChild(h("p", { className: "muted", text: "No pages have a bar in a Code Block." }));
-      }
-
-      scan.found.forEach(function (item) {
-        var box = h("input", { type: "checkbox" });
-        box.checked = item.selected;
-        box.addEventListener("change", function () { item.selected = box.checked; });
-        var links = item.bar.links.map(function (l) { return l.label; }).join(" \u00b7 ");
-        card.appendChild(h("label", { className: "check", style: "align-items:flex-start;margin-top:10px" }, [
-          box,
-          h("span", {}, [
-            h("strong", { text: item.bar.title || "(no label)" }),
-            h("div", { className: "muted", text: links }),
-            h("div", { className: "muted", text: "On " + item.pages.join(", ") }),
-            item.match ? h("div", { className: "muted", text: "Same as your bar \u201c" + barLabel(item.match) + "\u201d - those pages will use it." }) : null
-          ])
-        ]));
-      });
-
-      if (scan.found.length) {
-        var bring = h("button", { className: "btn primary", text: "Bring in the ticked bars", style: "margin-top:12px" });
-        bring.addEventListener("click", importFound);
-        card.appendChild(bring);
-      }
-      var dismiss = h("button", { className: "btn", text: "Close", style: "margin:12px 0 0 6px" });
-      dismiss.addEventListener("click", function () { state.scan = null; draw(); });
-      card.appendChild(dismiss);
-      return card;
-    }
-
-    function importFound() {
-      var bars = 0;
-      var pages = 0;
-      state.scan.found.forEach(function (item) {
-        if (!item.selected) return;
-        var name = item.match || matchingBar(item.bar);
-        if (!name) {
-          name = uniqueName(slug(item.bar.title) || "bar");
-          state.config.bars[name] = item.bar;
-          bars++;
-        }
-        item.pages.forEach(function (p) {
-          if (state.config.pages[p] !== name) pages++;
-          state.config.pages[p] = name;
-        });
-      });
-      state.scan = null;
-      say(bars + " bar" + (bars === 1 ? "" : "s") + " brought in, set on " + pages + " page" + (pages === 1 ? "" : "s") +
-        ". Those pages keep showing their own Code Block until you delete it - " +
-        (source ? "after you Save here" : "after you publish these settings") +
-        ", delete each page's old Code Block and nothing changes for visitors.", "ok");
-      changed();
-    }
-
-    function barCard(name) {
-      var bar = state.config.bars[name];
-      var card = h("div", { className: "card" });
-      var usedOn = Object.keys(state.config.pages).filter(function (p) { return state.config.pages[p] === name; });
-
-      var toggle = h("button", { className: "icon", text: state.openBar === name ? "\u25be" : "\u25b8" });
-      var heading = h("h2", { className: "grow", text: bar.title || "(no label)" });
-      card.appendChild(h("div", { className: "row" }, [toggle, heading]));
-      card.appendChild(h("div", { className: "muted", text: "Name: " + name + " \u00b7 on " + usedOn.length + " page" + (usedOn.length === 1 ? "" : "s") }));
-      toggle.addEventListener("click", function () {
-        state.openBar = state.openBar === name ? null : name;
-        draw();
-      });
-      if (state.openBar !== name) return card;
-
-      card.appendChild(field("Label", bar.title, function (v) { bar.title = v; heading.textContent = v || "(no label)"; }));
-      card.appendChild(field("Label links to (optional)", bar.titleUrl, function (v) { if (v) bar.titleUrl = v; else delete bar.titleUrl; }, "sn-paths"));
-
-      card.appendChild(h("label", { text: "Links" }));
-      bar.links = Array.isArray(bar.links) ? bar.links : [];
-      bar.links.forEach(function (link, index) {
-        var label = h("input", { type: "text", placeholder: "Label", value: link.label || "" });
-        label.addEventListener("input", function () { link.label = label.value; changed(false); });
-        var url = h("input", { type: "text", placeholder: "/page or https://\u2026", value: link.url || "" });
-        url.setAttribute("list", "sn-paths");
-        url.addEventListener("input", function () { link.url = url.value.trim(); changed(false); });
-
-        var up = h("button", { className: "icon", title: "Move up", text: "\u2191" });
-        up.disabled = index === 0;
-        up.addEventListener("click", function () { move(bar.links, index, -1); changed(); });
-        var down = h("button", { className: "icon", title: "Move down", text: "\u2193" });
-        down.disabled = index === bar.links.length - 1;
-        down.addEventListener("click", function () { move(bar.links, index, 1); changed(); });
-        var newTab = h("input", { type: "checkbox", title: "Open in a new tab" });
-        newTab.checked = !!link.newTab;
-        newTab.addEventListener("change", function () { if (newTab.checked) link.newTab = true; else delete link.newTab; changed(false); });
-        var remove = h("button", { className: "icon", title: "Remove link", text: "\u00d7" });
-        remove.addEventListener("click", function () { bar.links.splice(index, 1); changed(); });
-
-        card.appendChild(h("div", { className: "link" }, [label, url, h("div", { className: "tools" }, [newTab, up, down, remove])]));
-      });
-      card.appendChild(h("div", { className: "muted", text: "The checkbox opens that link in a new tab." }));
-      var addLink = h("button", { className: "btn", text: "+ Add link", style: "margin-top:6px" });
-      addLink.addEventListener("click", function () { bar.links.push({ label: "", url: "" }); changed(); });
-      card.appendChild(addLink);
-
-      card.appendChild(choice("On phones", bar.phone === "swipe" ? "swipe" : "dropdown",
-        [["dropdown", "Dropdown"], ["swipe", "Swipeable row"]],
-        function (v) { bar.phone = v; }));
-      card.appendChild(choice("Text style", bar.textStyle === "plain" ? "plain" : "site",
-        [["site", "Site styles (Heading 4 + paragraph)"], ["plain", "Plain"]],
-        function (v) { if (v === "plain") bar.textStyle = "plain"; else delete bar.textStyle; delete bar.titleTag; delete bar.linkTag; }));
-      card.appendChild(checkbox("Bold label", bar.boldLabel, function (v) { if (v) bar.boldLabel = true; else delete bar.boldLabel; }));
-      card.appendChild(checkbox("Bold links", bar.boldLinks, function (v) { if (v) bar.boldLinks = true; else delete bar.boldLinks; }));
-      card.appendChild(checkbox("Stick to top when scrolling", bar.sticky, function (v) { if (v) bar.sticky = true; else delete bar.sticky; }));
-
-      bar.colors = bar.colors || {};
-      [["bg", "Bar background", "#ececec"], ["text", "Text", "#111111"], ["hover", "Link color on hover", "#111111"]].forEach(function (c) {
-        card.appendChild(colorField(c[1], bar.colors, c[0], c[2]));
-      });
-
-      var rename = h("button", { className: "btn", text: "Rename" });
-      rename.addEventListener("click", function () {
-        var next = window.prompt("New name for this bar (letters, numbers and dashes):", name);
-        next = next && next.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
-        if (!next || next === name) return;
-        if (state.config.bars[next]) return window.alert("There's already a bar called " + next + ".");
-        state.config.bars = renameKey(state.config.bars, name, next);
-        Object.keys(state.config.pages).forEach(function (p) {
-          if (state.config.pages[p] === name) state.config.pages[p] = next;
-        });
-        state.openBar = next;
-        changed();
-      });
-
-      var linked = h("button", { className: "btn", text: "Show on the pages it links to" });
-      linked.title = "Turns this bar on for every page in its own links, so each page in the section gets it.";
-      linked.addEventListener("click", function () {
-        var count = 0;
-        bar.links.forEach(function (link) {
-          var p = localPath(link.url);
-          if (p && state.config.pages[p] !== name) { state.config.pages[p] = name; count++; }
-        });
-        if (bar.titleUrl) {
-          var t = localPath(bar.titleUrl);
-          if (t && state.config.pages[t] !== name) { state.config.pages[t] = name; count++; }
-        }
-        changed();
-        window.alert(count ? "Turned on for " + count + " more page" + (count === 1 ? "" : "s") + "." : "It's already on every page it links to.");
-      });
-
-      var del = h("button", { className: "btn danger", text: "Delete bar" });
-      del.addEventListener("click", function () {
-        if (!window.confirm("Delete this bar? It comes off the " + usedOn.length + " page(s) using it.")) return;
-        delete state.config.bars[name];
-        Object.keys(state.config.pages).forEach(function (p) {
-          if (state.config.pages[p] === name) delete state.config.pages[p];
-        });
-        changed();
-      });
-
-      card.appendChild(h("div", { className: "row", style: "margin-top:12px;flex-wrap:wrap" }, [linked, rename, del]));
-      return card;
-    }
-
-    function drawInstall() {
-      if (source) return drawSave();
-
-      if (settingsProblem) body.appendChild(h("div", { className: "msg bad", text: "The settings block in Code Injection (site-nav-config) can't be read, so the worker address in it is being ignored. The error was: " + settingsProblem + ". Check for a missing comma or quote near the address." }));
-      body.appendChild(h("div", { className: "msg bad", text: "Saving straight to the site isn't set up, so publishing means pasting code. To get a Save button instead, put your settings service's address in \"source\" in Code Injection - see SAVE-BUTTON-SETUP.md. If you already did, check Code Injection doesn't still have an older copy of this snippet without it." }));
+      mbody.appendChild(h("div", { className: "msg bad", text: "Saving straight to the site isn't set up, so publishing means pasting code. To get a Save button instead, put your settings service's address in \"source\" in Code Injection - see SAVE-BUTTON-SETUP.md. If you already did, check Code Injection doesn't still have an older copy of this snippet without it." }));
+      if (settingsProblem) mbody.appendChild(h("div", { className: "msg bad", text: "The settings block in Code Injection (site-nav-config) can't be read, so the worker address in it is being ignored. The error was: " + settingsProblem + ". Check for a missing comma or quote near the address." }));
       var blocks = document.querySelectorAll("script[id='site-nav-config']").length;
       var engines = document.querySelectorAll("style[data-site-nav-style]").length;
-      body.appendChild(h("p", { className: "muted", text: "On this page: " + blocks + " settings block" + (blocks === 1 ? "" : "s") + " and " + engines + " copy" + (engines === 1 ? "" : "ies") + " of the bar's code. With everything set up right that's 1 and 1." }));
+      mbody.appendChild(h("p", { className: "muted", text: "On this page: " + blocks + " settings block" + (blocks === 1 ? "" : "s") + " and " + engines + " copy" + (engines === 1 ? "" : "ies") + " of the bar's code. With everything set up right that's 1 and 1." }));
 
       var code = installCode(state.config);
-      body.appendChild(h("p", { style: "margin-top:0", text: code.full
-        ? "To publish: in Squarespace go to Settings \u2192 Advanced \u2192 Code Injection, select everything in the Footer box that belongs to the navigation bar (from \u201cSecondary navigation bar: start\u201d to \u201c: end\u201d), and paste this over it. Then Save."
-        : "To publish: in Code Injection \u2192 Footer, replace the site-nav-config block with this one. Then Save." }));
+      mbody.appendChild(h("p", { text: code.full
+        ? "To publish: in Squarespace go to Settings → Advanced → Code Injection, select everything in the Footer box that belongs to the navigation bar (from “Secondary navigation bar: start” to “: end”), and paste this over it. Then Save."
+        : "To publish: in Code Injection → Footer, replace the site-nav-config block with this one. Then Save." }));
 
       var area = h("textarea", { readOnly: true });
       area.value = code.text;
@@ -1247,80 +1369,13 @@
           setTimeout(function () { copy.textContent = "Copy code"; }, 1500);
         });
       });
-      body.appendChild(h("div", { className: "row", style: "margin-bottom:8px" }, [copy]));
-      body.appendChild(area);
-
-      if (state.restored) {
-        var discard = h("button", { className: "btn danger", text: "Discard changes", style: "margin-top:12px" });
-        discard.addEventListener("click", function () {
-          if (!window.confirm("Throw away your changes and go back to what's live on the site?")) return;
-          clearDraft();
-          state.config = liveConfig();
-          state.restored = false;
-          currentKey = "";
-          mount();
-          draw();
-        });
-        body.appendChild(discard);
-        body.appendChild(h("p", { className: "muted", text: "Once the new code is live, the draft clears itself the next time you open setup." }));
-      }
+      mbody.appendChild(h("div", { className: "row", style: "margin-bottom:8px" }, [copy]));
+      mbody.appendChild(area);
+      mbody.appendChild(h("p", { className: "muted", text: "Once the new code is live, the draft clears itself the next time you open setup." }));
+      overlay.appendChild(modal);
     }
 
-    /* With a settings service: the password, and Save. */
-    function drawSave() {
-      body.appendChild(h("p", { style: "margin-top:0", text: "Saving puts your changes live on every page of the site straight away. No code to copy." }));
-
-      var password = h("input", { type: "password", placeholder: "Settings password", value: getPassword() });
-      password.setAttribute("autocomplete", "current-password");
-      var remember = h("input", { type: "checkbox" });
-      try { remember.checked = !!localStorage.getItem(PASSWORD_KEY); } catch (error) { /* ignore */ }
-      function store() { setPassword(password.value, remember.checked); }
-      password.addEventListener("input", store);
-      remember.addEventListener("change", store);
-      body.appendChild(h("label", { text: "Password" }));
-      body.appendChild(password);
-      body.appendChild(h("label", { className: "check" }, [remember, document.createTextNode("Remember on this device")]));
-
-      var save = h("button", { className: "btn primary", text: state.saving ? "Saving\u2026" : "Save", style: "margin-top:8px" });
-      save.disabled = state.saving || !state.loaded;
-      save.addEventListener("click", function () { store(); doSave(false); });
-      body.appendChild(save);
-
-      if (state.conflict) {
-        var theirs = h("button", { className: "btn", text: "Load their version (lose my changes)" });
-        theirs.addEventListener("click", function () {
-          keepRemote(source, state.conflict);
-          clearDraft();
-          state.config = liveConfig();
-          state.baseVersion = remote.version;
-          state.restored = false;
-          state.conflict = null;
-          say("Loaded the latest saved settings.", "ok");
-          currentKey = "";
-          mount();
-          draw();
-        });
-        var mine = h("button", { className: "btn danger", text: "Save mine over theirs" });
-        mine.addEventListener("click", function () { doSave(true); });
-        body.appendChild(h("div", { className: "row", style: "margin-top:12px;flex-wrap:wrap" }, [theirs, mine]));
-      }
-
-      if (state.restored) {
-        var discard = h("button", { className: "btn danger", text: "Discard my changes", style: "margin-top:16px" });
-        discard.addEventListener("click", function () {
-          if (!window.confirm("Throw away your changes and go back to what's live on the site?")) return;
-          clearDraft();
-          state.config = liveConfig();
-          state.baseVersion = remote ? remote.version : state.baseVersion;
-          state.restored = false;
-          say("");
-          currentKey = "";
-          mount();
-          draw();
-        });
-        body.appendChild(h("div", {}, [discard]));
-      }
-    }
+    /* ---------------- Small form pieces ---------------- */
 
     function field(text, value, set, list) {
       var input = h("input", { type: "text", value: value || "" });
@@ -1344,12 +1399,15 @@
       return h("label", { className: "check" }, [input, document.createTextNode(text)]);
     }
 
-    function colorField(text, colors, key, fallback) {
+    function colorField(text, bar, key, fallback) {
+      var colors = bar.colors || {};
       var input = h("input", { type: "text", placeholder: "Default (" + fallback + ")", value: colors[key] || "" });
       var picker = h("input", { type: "color", value: /^#[0-9a-f]{6}$/i.test(colors[key] || "") ? colors[key] : fallback });
       function set(v) {
-        if (v && SAFE_VALUE.test(v)) colors[key] = v;
-        else delete colors[key];
+        bar.colors = bar.colors || {};
+        if (v && SAFE_VALUE.test(v)) bar.colors[key] = v;
+        else delete bar.colors[key];
+        if (!Object.keys(bar.colors).length) delete bar.colors;
         changed(false);
       }
       input.addEventListener("input", function () {
@@ -1373,7 +1431,32 @@
       state.restored = false;
     }
 
-    draw();
+    refreshPaths();
+  }
+
+  /* The site's own Heading 4 and paragraph type, measured from the page, so
+     the preview inside the setup panel matches the live bar. */
+  function siteTypeCss() {
+    var into = document.querySelector("#sections .content, #sections, main, body");
+    if (!into) return "";
+    var probe = document.createElement("div");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden";
+    var heading = document.createElement("h4");
+    var para = document.createElement("p");
+    heading.textContent = para.textContent = "x";
+    probe.appendChild(heading);
+    probe.appendChild(para);
+    into.appendChild(probe);
+    var props = ["font-family", "font-size", "font-weight", "font-style", "letter-spacing", "text-transform", "line-height"];
+    function rules(el) {
+      var cs = getComputedStyle(el);
+      return props.map(function (p) { return p + ":" + cs.getPropertyValue(p); }).join(";");
+    }
+    var css = ".pv{font-family:" + getComputedStyle(into).fontFamily + "}" +
+      ".pv h4.sn-nav__title{" + rules(heading) + "}.pv p.sn-nav__text{" + rules(para) + "}";
+    into.removeChild(probe);
+    return css;
   }
 
   /* Looks through the given pages for bars pasted into Code Blocks (the

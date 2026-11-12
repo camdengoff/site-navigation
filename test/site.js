@@ -276,7 +276,7 @@ async function run(browser, label, snippetFor) {
   await page.goto("http://site.test/about?sitenav-setup");
   const panelRows = await page.waitForFunction(() => {
     const host = document.querySelector("[data-sn-setup]");
-    const rows = host && host.shadowRoot.querySelectorAll(".pages li a");
+    const rows = host && host.shadowRoot.querySelectorAll(".pages .pathname");
     return rows && rows.length ? [...rows].map((a) => a.textContent) : null;
   }, null, { timeout: 5000 });
   const rows = await panelRows.jsonValue();
@@ -284,28 +284,27 @@ async function run(browser, label, snippetFor) {
   check("setup: lists patterns from the settings too", rows.includes("/sermons/*"), true);
   check("setup: lists pages in the site's menus that the sitemap doesn't have yet", rows.includes("/new-page"), true);
   check("setup: leaves out Squarespace's own non-page links", rows.includes("/cart"), false);
+  check("setup: one list - no separate Bars/Pages tabs",
+    await page.evaluate(() => document.querySelector("[data-sn-setup]").shadowRoot.querySelectorAll(".tabs").length), 0);
 
-  // Find the bars already pasted into Code Blocks around the site.
+  const chipFor = (path) => page.evaluate((p) => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    const button = [...root.querySelectorAll(".pagebtn")].find((b) => b.querySelector(".pathname").textContent === p);
+    return [...button.querySelectorAll(".chip")].map((c) => c.textContent);
+  }, path);
+  check("setup: each page shows its bar", await chipFor("/watch-online"), ["Watch Online"]);
+  check("setup: a page covered by a pattern says so", await chipFor("/sermons/easter"), ["Watch Online (from /sermons/*)"]);
+
+  // Find the bars already pasted into Code Blocks around the site: each one
+  // is connected straight to the page it was found on.
   await page.evaluate(() => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    [...root.querySelectorAll(".tabs button")].find((b) => b.textContent === "Bars").click();
     [...root.querySelectorAll("button")].find((b) => b.textContent === "Find bars already on the site").click();
   });
-  const found = await (await page.waitForFunction(() => {
-    const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    const bring = [...root.querySelectorAll("button")].find((b) => b.textContent === "Bring in the ticked bars");
-    if (!bring) return null;
-    return [...bring.closest(".card").querySelectorAll("label.check")].map((l) => l.textContent);
-  }, null, { timeout: 10000 })).jsonValue();
-  check("find bars: one per distinct bar, grouped across pages", found.length, 2);
-  check("find bars: same bar on two pages found once, with both pages",
-    found.some((t) => t.includes("Ministries") && t.includes("/ministries/music, /ministries/youth")), true);
-  check("find bars: the other page's bar found", found.some((t) => t.includes("Own") && t.includes("/own-block")), true);
-
-  await page.evaluate(() => {
-    const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    [...root.querySelectorAll("button")].find((b) => b.textContent === "Bring in the ticked bars").click();
-  });
+  await page.waitForFunction(() => {
+    const m = document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".msg");
+    return m && /^Found/.test(m.textContent);
+  }, null, { timeout: 10000 });
   const imported = await page.evaluate(() => JSON.parse(localStorage.getItem("sitenav-setup-draft")).config);
   check("find bars: brought in with every setting", imported.bars.ministries, {
     title: "Ministries",
@@ -315,12 +314,66 @@ async function run(browser, label, snippetFor) {
     colors: { bg: "#001122" },
     vars: { "--sn-height": "3rem" }
   });
-  check("find bars: set on the pages they were on",
+  check("find bars: the same bar on two pages becomes one bar on both",
     [imported.pages["/ministries/youth"], imported.pages["/ministries/music"]], ["ministries", "ministries"]);
+  check("find bars: the other page's bar connected to its page",
+    imported.bars[imported.pages["/own-block"]].links.map((l) => l.label), ["Own"]);
+  check("find bars: the page list shows it, marked as found", await chipFor("/ministries/youth"), ["Ministries", "found on page"]);
 
-  // Turn the bar on for this page from the "This page" picker.
+  // Click a page: the popup has a preview and the editor.
+  const openPopup = (path) => page.evaluate((p) => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll(".pagebtn")].find((b) => b.querySelector(".pathname").textContent === p).click();
+  }, path);
+  await openPopup("/ministries/youth");
+  const popup = await page.evaluate(async () => {
+    await new Promise((r) => setTimeout(r, 200));
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    const modal = root.querySelector(".modal");
+    return {
+      title: modal.querySelector("h2").textContent,
+      chosen: modal.querySelector("select").selectedOptions[0].textContent,
+      preview: [...modal.querySelectorAll(".pv .sn-nav__link")].map((a) => a.textContent),
+      previewBg: getComputedStyle(modal.querySelector(".pv .sn-nav")).backgroundColor,
+      shared: !!modal.querySelector(".note"),
+      label: modal.querySelector(".mbody input[type=text]").value
+    };
+  });
+  check("popup: opens for the page clicked", popup.title, "/ministries/youth");
+  check("popup: shows the page's bar", popup.chosen, "Ministries");
+  check("popup: previews the bar for real", popup.preview, ["Youth", "Music"]);
+  check("popup: preview uses the bar's own colors", popup.previewBg, "rgb(0, 17, 34)");
+  check("popup: says the bar is shared with another page", popup.shared, true);
+  check("popup: editor is right there", popup.label, "Ministries");
+
+  // Edit the label in the popup: the preview follows.
   await page.evaluate(() => {
-    const select = document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".here select");
+    const input = document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".mbody input[type=text]");
+    input.value = "Our Ministries";
+    input.dispatchEvent(new Event("input"));
+  });
+  await page.waitForTimeout(100);
+  check("popup: editing updates the preview", await page.evaluate(() =>
+    document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".pv .sn-nav__title").textContent), "Our Ministries");
+
+  // Separate copy just for this page.
+  await page.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll("button")].find((b) => b.textContent === "Make a separate copy for this page").click();
+  });
+  const split = await page.evaluate(() => JSON.parse(localStorage.getItem("sitenav-setup-draft")).config.pages);
+  check("popup: a separate copy leaves the other page alone",
+    split["/ministries/youth"] !== split["/ministries/music"] && split["/ministries/music"] === "ministries", true);
+  await page.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll("button")].find((b) => b.textContent === "Done").click();
+  });
+
+  // This page: pick a bar from the popup.
+  await page.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll("button")].find((b) => b.textContent === "Edit this page's bar").click();
+    const select = root.querySelector(".modal select");
     select.value = "watch";
     select.dispatchEvent(new Event("change"));
   });
@@ -335,7 +388,7 @@ async function run(browser, label, snippetFor) {
   // Get the code to paste back into Code Injection.
   const code = await page.evaluate(() => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    [...root.querySelectorAll(".tabs button")].find((b) => b.textContent === "Publish").click();
+    [...root.querySelectorAll("button")].find((b) => b.textContent === "Publish\u2026").click();
     return root.querySelector("textarea").value;
   });
   check("setup: hands back the whole snippet", code.startsWith("<!-- Secondary navigation bar: start -->"), true);

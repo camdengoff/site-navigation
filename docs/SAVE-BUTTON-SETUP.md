@@ -92,18 +92,19 @@ Prefer the command line? `worker/wrangler.toml` is set up for
 Open the settings page **on the live site** (not in the editor, where
 Squarespace turns scripts off):
 
-- **Moving over from Code Blocks?** On **Bars**, click **Find bars already
-  on the site**. It reads every page, lists each bar it finds in a Code Block
-  (one entry per distinct bar, with the pages it's on), and **Bring in the
-  ticked bars** adds them here, set on those same pages. Save, then delete the
-  old Code Blocks. A page's own Code Block wins while it's still there, so
-  visitors see no change at any point.
-- **Bars**: make a bar (label, links, colors). It previews above the panel as
-  you go.
-- **Pages**: pick a bar for each page, or **No bar**. Each page name opens
-  that page in a new tab with the panel on it, so you can see the bar in
-  place before saving.
-- **Save**: enter the password once (tick *Remember on this device* if you
+- **The list** shows every page on the site and the bar each one has.
+  **Click a page** to open its popup: pick its bar (or **+ A new bar**), see a
+  live preview, and edit the label, links, colors and the rest right there.
+  A bar can be shared by several pages; the popup says so, and **Make a
+  separate copy for this page** splits it off. **Also put this bar on the
+  pages it links to** sets up a whole section in one click.
+- **Moving over from Code Blocks?** Click **Find bars already on the site**.
+  It reads every page and connects each bar it finds in a Code Block to the
+  page it was on (the same bar on several pages becomes one shared bar).
+  Those pages are marked *found on page*. Save, then delete the old Code
+  Blocks. A page's own Code Block wins while it's still there, so visitors
+  see no change at any point.
+- **Save** (at the bottom): enter the password once (tick *Remember* if you
   like), then click **Save**. It's live straight away. Cloudflare can take up
   to a minute to show the change everywhere.
 

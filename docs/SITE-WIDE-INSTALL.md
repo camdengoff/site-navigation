@@ -38,21 +38,21 @@ for no pages.
 1. Open any page of the **live** site with `?sitenav-setup` added to the end
    of the address, e.g. `https://www.example.org/?sitenav-setup`. A setup
    panel opens on the right.
-2. Already have bars in Code Blocks? **Bars** tab → **Find bars already on
-   the site** brings each one in, set on the pages it's on. Otherwise:
-   **Bars** tab → **+ New bar**. Give it a label (e.g. *Watch Online*), its
-   links, and how it should look. Several pages can share one bar.
-3. **Pages** tab: every page on the site is listed (read from the site's own
-   `sitemap.xml`). Pick a bar next to each page that should have one. Or, on
-   the Bars tab, **Show on the pages it links to** turns a bar on for every
-   page in its own links in one click.
-   - The box at the top always shows **the page you're on**, so you can also
-     just browse the site with the panel open and set each page as you go.
-     The bar previews on the page straight away.
+2. The panel lists every page on the site with the bar it has. **Click a
+   page** to open its popup: pick a bar or **+ A new bar**, see a live
+   preview, and edit its label, links and look right there. Several pages
+   can share one bar.
+   - Already have bars in Code Blocks? **Find bars already on the site**
+     connects each one to the page it was found on.
+   - **Edit this page's bar** at the top goes straight to the page you're
+     on, so you can also browse the site with the panel open and set each
+     page as you go. The bar previews on the page straight away.
    - **Patterns**: add `/sermons/*` to cover every page under `/sermons/`,
      like each post of a blog. A page's own setting always wins over a
      pattern, so a single post can still be set to *No bar*.
-4. **Publish** tab → **Copy code**.
+3. (Steps 3-5 only apply without the [Save button](SAVE-BUTTON-SETUP.md).)
+   Click **Publish…** at the bottom of the panel.
+4. **Copy code**.
 5. Back in **Code Injection → Footer**, select everything from
    `<!-- Secondary navigation bar: start -->` to
    `<!-- Secondary navigation bar: end -->`, paste over it, and **Save**.
@@ -125,7 +125,7 @@ One JSON block in the Footer, which the setup panel writes for you:
 
 Path keys plus `/*` patterns cover the common cases well, and the setup panel
 lists pages from the live sitemap so a renamed page is easy to spot (it shows
-up as an unlisted rule at the top of the Pages tab).
+up as an unlisted rule at the top of the page list).
 
 ---
 

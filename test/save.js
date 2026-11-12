@@ -138,12 +138,6 @@ async function site(browser, worker, env, options) {
   return { context, opts };
 }
 
-async function tab(page, name) {
-  await page.evaluate((n) => {
-    [...document.querySelector("[data-sn-setup]").shadowRoot.querySelectorAll(".tabs button")].find((b) => b.textContent === n).click();
-  }, name);
-}
-
 async function message(page) {
   await page.waitForFunction(() => {
     const m = document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".msg");
@@ -156,58 +150,59 @@ async function openSettings(page) {
   await page.goto(SITE + "/settings");
   await page.waitForFunction(() => {
     const host = document.querySelector("[data-site-nav-admin] [data-sn-setup]");
-    return host && host.shadowRoot.querySelectorAll(".pages li").length > 0 &&
+    return host && host.shadowRoot.querySelectorAll(".pages .pagebtn").length > 0 &&
       !/Loading/.test(host.shadowRoot.querySelector(".foot").textContent);
   }, null, { timeout: 5000 });
 }
 
-/* Makes a bar called bar-1 with one link, and puts it on /watch-online. */
-async function makeBar(page, title) {
-  await tab(page, "Bars");
+/* Opens the popup for a page, does something in it, and clicks Done. */
+async function inPopup(page, path, fn, arg) {
+  await page.evaluate((p) => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll(".pagebtn")].find((b) => b.querySelector(".pathname").textContent === p).click();
+  }, path);
+  const result = await page.evaluate(fn, arg);
   await page.evaluate(() => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    [...root.querySelectorAll("button")].find((b) => b.textContent === "+ New bar").click();
+    const done = [...root.querySelectorAll("button")].find((b) => b.textContent === "Done");
+    if (done) done.click();
   });
-  await page.evaluate((t) => {
+  return result;
+}
+
+/* Puts a new bar on /watch-online, with one link. Returns the preview's label. */
+async function makeBar(page, title) {
+  return inPopup(page, "/watch-online", async (t) => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
     const type = (el, v) => { el.value = v; el.dispatchEvent(new Event("input")); };
-    const card = root.querySelector(".card");
-    type(card.querySelector("input[type=text]"), t);
-    const link = card.querySelector(".link");
+    const select = root.querySelector(".modal select");
+    select.value = "#new";
+    select.dispatchEvent(new Event("change"));
+    const modal = root.querySelector(".modal");
+    type(modal.querySelector(".mbody input[type=text]"), t);
+    const link = modal.querySelector(".link");
     type(link.querySelectorAll("input[type=text]")[0], "Live");
     type(link.querySelectorAll("input[type=text]")[1], "/watch-online");
+    await new Promise((r) => setTimeout(r, 200));
+    const shown = root.querySelector(".pv .sn-nav__title");
+    return shown && shown.textContent;
   }, title);
-  await tab(page, "Pages");
-  await page.evaluate(() => {
-    const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    const row = [...root.querySelectorAll(".pages li")].find((li) => li.querySelector("a").textContent === "/watch-online");
-    const select = row.querySelector("select");
-    select.value = "bar-1";
-    select.dispatchEvent(new Event("change"));
-  });
 }
 
 async function setTitle(page, title) {
-  await tab(page, "Bars");
-  await page.evaluate(() => {
-    const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    if (!root.querySelector(".card input[type=text]")) root.querySelector(".card .icon").click();
-  });
-  await page.evaluate((t) => {
-    const input = document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".card input[type=text]");
+  await inPopup(page, "/watch-online", (t) => {
+    const input = document.querySelector("[data-sn-setup]").shadowRoot.querySelector(".mbody input[type=text]");
     input.value = t;
     input.dispatchEvent(new Event("input"));
   }, title);
 }
 
 async function save(page, password) {
-  await tab(page, "Save");
   await page.evaluate((pw) => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    const input = root.querySelector("input[type=password]");
-    input.value = pw;
-    input.dispatchEvent(new Event("input"));
-    [...root.querySelectorAll(".body button")].find((b) => b.textContent === "Save").click();
+    const input = root.querySelector(".foot input[type=password]");
+    if (input) input.value = pw;
+    [...root.querySelectorAll(".foot button")].find((b) => b.textContent === "Save").click();
   }, password);
   return message(page);
 }
@@ -243,12 +238,8 @@ async function browserChecks(worker) {
   });
   check("settings page: panel sits in the page, not over it", layout, { inPage: true, position: "relative" });
 
-  await makeBar(page, "Watch Online");
-  const previewTitle = await page.evaluate(() => {
-    const t = document.querySelector(".sn-admin-preview .sn-nav__title");
-    return t && t.textContent;
-  });
-  check("settings page: previews the bar being edited", previewTitle, "Watch Online");
+  const previewTitle = await makeBar(page, "Watch Online");
+  check("settings page: the page's popup previews the bar being edited", previewTitle, "Watch Online");
 
   check("wrong password: says so", await save(page, "nope"), "That password wasn't right.");
   check("wrong password: nothing saved", env.store.has("config"), false);
@@ -303,10 +294,10 @@ async function browserChecks(worker) {
   // Something else on the page defines a global with the same name.
   await mp.addInitScript(() => { window.SiteNavConfig = { somethingElse: true }; });
   await openSettings(mp);
-  await tab(mp, "Save");
   const mode = await mp.evaluate(() => {
     const root = document.querySelector("[data-sn-setup]").shadowRoot;
-    return { password: !!root.querySelector("input[type=password]"), code: !!root.querySelector("textarea") };
+    const labels = [...root.querySelectorAll(".foot button")].map((b) => b.textContent);
+    return { password: labels.includes("Save"), code: labels.some((l) => /Publish/.test(l)) };
   });
   check("old copy left behind + bare address: still gets the Save button, no code", mode, { password: true, code: false });
   check("old copy left behind: visitors still get the saved bar", await barTitle(mp, SITE + "/watch-online"), "Watch Live");
