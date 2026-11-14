@@ -5,7 +5,7 @@
   "description": "A small navigation bar for section pages on a Squarespace site.",
   "scripts": {
     "build": "node build.js",
-    "test": "node test/run.js"
+    "test": "node test/run.js && node test/site.js && node test/save.js"
   },
   "devDependencies": {
     "clean-css": "^5.3.3",

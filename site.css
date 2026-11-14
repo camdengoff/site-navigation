@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Page Navigation - site-wide install, extra styles
+   --------------------------------------------------------------------------
+   Only used by the site-wide install (site.js, pasted once into Code
+   Injection). It is bundled after nav.css, so everything here builds on the
+   bar's own styles.
+
+   In the site-wide install the bar is not inside a Code Block: site.js puts
+   it in a wrapper of its own (.sn-site) at the very top of the page content,
+   directly under Squarespace's header. That wrapper is already the full
+   width of the page, so the bar's background reaches both edges by itself.
+   ========================================================================== */
+
+.sn-site {
+  display: block;
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  /* Sits above the first section's own background, which in Squarespace 7.1
+     can be a full-bleed image with its own stacking context. */
+  z-index: 2;
+}
+
+/* The bar's own edge-to-edge trick (a 100vw ::before) isn't needed here - the
+   wrapper is already full width - and leaving it on can add a horizontal
+   scrollbar on desktops that show one. */
+.sn-site .sn-nav::before {
+  display: none;
+}
+
+/* Lines the label and links up with the rest of the page's content instead
+   of the very edges of the window. Squarespace 7.1 publishes its content
+   width and side gutter as CSS variables; the fallbacks match its defaults,
+   for 7.0 templates that don't. Turned off with "align": "full". */
+.sn-site[data-align="site"] .sn-nav[data-narrow="false"] {
+  --sn-pad-x: var(--sqs-site-gutter, 4vw);
+}
+
+.sn-site[data-align="site"] .sn-nav[data-narrow="false"] .sn-nav__inner {
+  max-width: var(--sqs-site-max-width, 1500px);
+  margin: 0 auto;
+}
+
+/* "Stick to top when scrolling". The wrapper sticks rather than the bar
+   inside it, and it sticks just under a header that stays on screen itself -
+   site.js measures that and sets --sn-sticky-top. */
+.sn-site[data-sticky="true"] {
+  position: sticky;
+  top: var(--sn-sticky-top, 0px);
+  z-index: 900;
+}

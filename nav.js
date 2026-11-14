@@ -23,7 +23,7 @@
      updated block onto a page that briefly still has the old one loaded (e.g.
      mid-save) can leave two copies running. The older one steps aside instead
      of the two fighting over the same bar. */
-  var VERSION = 7;
+  var VERSION = 8;
   if (window.SiteNav && window.SiteNav.version >= VERSION) return;
 
   /* Below this many pixels wide, the bar switches to its narrow layout. */
@@ -402,8 +402,11 @@
     });
 
     // Tapping anywhere else on the page closes it.
+    // (composedPath, so a bar inside the setup panel's preview still sees
+    // which element was really tapped.)
     document.addEventListener("click", function (event) {
-      if (!el.contains(event.target)) setOpen(el, button, false);
+      var path = event.composedPath ? event.composedPath() : [event.target];
+      if (path.indexOf(el) === -1 && !el.contains(event.target)) setOpen(el, button, false);
     });
 
     // Escape closes it and puts the focus back on the button.
@@ -544,5 +547,14 @@
 
   // Exposed so the builder's preview - and anyone debugging a page - can force
   // a re-run by hand.
-  window.SiteNav = { version: VERSION, refresh: start };
+  /* Builds one bar on demand, wherever it is - including inside the setup
+     panel's popup, which start() can't see into. */
+  function build(el) {
+    el.setAttribute("data-site-nav-ready", String(VERSION));
+    return getLinks(el).then(function (links) {
+      render(el, links);
+    });
+  }
+
+  window.SiteNav = { version: VERSION, refresh: start, build: build };
 })();

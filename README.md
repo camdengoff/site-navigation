@@ -17,6 +17,19 @@ fresh one.
 &nbsp;·&nbsp;
 **[See it live →](https://camdengoff.github.io/site-navigation/)**
 
+### Or: install it once for the whole site
+
+There's also a **site-wide install**: paste one snippet into Squarespace's
+Code Injection, then turn the bar on page by page from a setup panel on the
+live site (`?sitenav-setup` on any page's address). The panel lists every
+page on the site, previews the bar as you go, and hands back the updated code
+to paste. The bar always lands at the very top of the page content, directly
+under Squarespace's header. See
+**[docs/SITE-WIDE-INSTALL.md](docs/SITE-WIDE-INSTALL.md)**. Add a small free Cloudflare Worker and the
+settings get their own page on the site with a real **Save** button, so there's
+no code to paste after the first install. See
+**[docs/SAVE-BUTTON-SETUP.md](docs/SAVE-BUTTON-SETUP.md)**.
+
 ---
 
 ## Why it's better than the current setup
@@ -85,14 +98,18 @@ changing an existing one, means coming back to the builder each time.
 | `builder.html` | The form that writes the code. This is the thing people use. |
 | `nav.css` | How the bar looks. All colors and spacing are CSS variables at the top. |
 | `nav.js` | Builds the bar from the block's own attributes. |
-| `build.js` | Minifies the two files above into `dist/`, for the builder to fetch and fold into each snippet it generates. |
-| `dist/` | The built engine. Committed, so you don't need to build to use the builder. |
-| `test/` | Checks the engine against realistic Squarespace markup. `npm test`. |
+| `site.js` / `site.css` | The site-wide install: picks the bar for each page from one list of settings, places it under the header, and the `?sitenav-setup` panel. |
+| `build.js` | Minifies the files above into `dist/`, for the builder to fetch and fold into each snippet it generates, and writes the site-wide snippet. |
+| `dist/` | The built engine. Committed, so you don't need to build to use the builder. `dist/site-wide-install.html` is the site-wide snippet, ready to paste. |
+| `test/` | Checks the engine against realistic Squarespace markup (`run.js`), and the site-wide install against a fake Squarespace site (`site.js`). `npm test`. |
 | `index.html` | The live demo / landing page. |
 | `preview.html` | Used by the builder to show the live preview. Not embedded on your site. |
 | `example-links.json` | Sample links file for the shared-list option below. |
 | `docs/SQUARESPACE-INSTALL.md` | Step-by-step for putting a snippet on a page. |
 | `docs/HANDOFF.md` | Day-to-day instructions to give to whoever maintains the site. |
+| `docs/SITE-WIDE-INSTALL.md` | Installing once in Code Injection and turning the bar on per page. |
+| `docs/SAVE-BUTTON-SETUP.md` | The settings page with a Save button, and setting up its storage. |
+| `worker/` | The storage the Save button writes to: one Cloudflare Worker file. |
 
 Each page's snippet carries its own full copy of the engine, so this repo is
 only ever the source and the builder — moving or deleting it can't affect a
