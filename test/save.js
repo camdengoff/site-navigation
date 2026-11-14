@@ -302,6 +302,24 @@ async function browserChecks(worker) {
   check("old copy left behind + bare address: still gets the Save button, no code", mode, { password: true, code: false });
   check("old copy left behind: visitors still get the saved bar", await barTitle(mp, SITE + "/watch-online"), "Watch Live");
 
+  /* ---- Moving off Cloudflare: one self-contained snippet ---- */
+  const leaving = await site(browser, worker, env);
+  const lv = await leaving.context.newPage();
+  await openSettings(lv);
+  const exported = await lv.evaluate(() => {
+    const root = document.querySelector("[data-sn-setup]").shadowRoot;
+    [...root.querySelectorAll(".foot button")].find((b) => /Move off Cloudflare/.test(b.textContent)).click();
+    return root.querySelector(".modal textarea").value;
+  });
+  check("export: the whole snippet", exported.startsWith("<!-- Secondary navigation bar: start -->"), true);
+  check("export: no Cloudflare address in it", /settings\.test|"source"/.test(exported), false);
+  check("export: carries the saved bars", exported.includes("Watch Live"), true);
+
+  // Pasted in, with the worker gone: a brand-new visitor still gets the bar.
+  const after = await site(browser, worker, env, { footer: exported, down: true });
+  const ap = await after.context.newPage();
+  check("export: works with no service at all, for a new visitor", await barTitle(ap, SITE + "/watch-online"), "Watch Live");
+
   await browser.close();
 }
 

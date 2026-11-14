@@ -953,7 +953,7 @@
         return;
       }
       overlay.hidden = false;
-      if (state.editing === "#publish") return drawPublishPopup();
+      if (state.editing === "#publish" || state.editing === "#export") return drawPublishPopup(state.editing === "#export");
 
       var path = state.editing;
       var isRule = /\*$/.test(path);
@@ -1248,6 +1248,13 @@
         return;
       }
 
+      // Leaving the settings service: everything, settings included, as one
+      // self-contained Code Injection snippet.
+      var leave = h("button", { className: "btn", text: "Move off Cloudflare\u2026" });
+      leave.title = "Get everything as one Code Injection snippet that needs no outside service";
+      leave.addEventListener("click", function () { openEditor("#export"); });
+      row.insertBefore(leave, row.children[1] || null);
+
       if (!getPassword()) {
         var password = h("input", { type: "password", placeholder: "Settings password" });
         password.setAttribute("aria-label", "Settings password");
@@ -1341,13 +1348,42 @@
     }
 
     /* Without a settings service: the code to paste into Code Injection. */
-    function drawPublishPopup() {
-      var modal = h("div", { className: "modal", role: "dialog", "aria-label": "Publish" });
-      var closeButton = h("button", { className: "icon", title: "Close", text: "×" });
+    function drawPublishPopup(exporting) {
+      var title = exporting ? "Move off Cloudflare" : "Publish";
+      var modal = h("div", { className: "modal", role: "dialog", "aria-label": title });
+      var closeButton = h("button", { className: "icon", title: "Close", text: "\u00d7" });
       closeButton.addEventListener("click", closeEditor);
-      modal.appendChild(h("div", { className: "mtop" }, [h("h2", { className: "grow", text: "Publish" }), closeButton]));
+      modal.appendChild(h("div", { className: "mtop" }, [h("h2", { className: "grow", text: title }), closeButton]));
       var mbody = h("div", { className: "mbody" });
       modal.appendChild(mbody);
+
+      if (exporting) {
+        var exported = installCode(state.config);
+        if (!exported.full) {
+          mbody.appendChild(h("div", { className: "msg bad", text: "This page can't read its own copy of the bar's code, so it can only hand back the settings. Paste dist/site-wide-install.html from the project into Code Injection, then put these settings in its site-nav-config block." }));
+        }
+        mbody.appendChild(h("p", { text: "This is the whole thing in one piece: the bar's code plus every bar and page setting shown here" +
+          (state.restored ? " (including your unsaved changes)" : "") + ", with no Cloudflare address in it." }));
+        mbody.appendChild(h("ol", {}, [
+          h("li", { text: "Copy it." }),
+          h("li", { text: "In Squarespace: Settings \u2192 Advanced \u2192 Code Injection \u2192 Footer. Select everything from \u201cSecondary navigation bar: start\u201d to \u201cend\u201d, paste this over it, and Save." }),
+          h("li", { text: "Check a page with a bar in a private window. Once it's right, the Cloudflare worker can be deleted - nothing uses it any more." })
+        ]));
+        mbody.appendChild(h("p", { className: "muted", text: "Afterwards this settings page still works the same, but its button at the bottom becomes Publish: changes go live by pasting the code it gives you, in the same way." }));
+        var exportArea = h("textarea", { readOnly: true });
+        exportArea.value = exported.text;
+        var exportCopy = h("button", { className: "btn primary", text: "Copy code" });
+        exportCopy.addEventListener("click", function () {
+          copyText(exported.text, exportArea).then(function () {
+            exportCopy.textContent = "Copied";
+            setTimeout(function () { exportCopy.textContent = "Copy code"; }, 1500);
+          });
+        });
+        mbody.appendChild(h("div", { className: "row", style: "margin-bottom:8px" }, [exportCopy]));
+        mbody.appendChild(exportArea);
+        overlay.appendChild(modal);
+        return;
+      }
 
       mbody.appendChild(h("div", { className: "msg bad", text: "Saving straight to the site isn't set up, so publishing means pasting code. To get a Save button instead, put your settings service's address in \"source\" in Code Injection - see SAVE-BUTTON-SETUP.md. If you already did, check Code Injection doesn't still have an older copy of this snippet without it." }));
       if (settingsProblem) mbody.appendChild(h("div", { className: "msg bad", text: "The settings block in Code Injection (site-nav-config) can't be read, so the worker address in it is being ignored. The error was: " + settingsProblem + ". Check for a missing comma or quote near the address." }));

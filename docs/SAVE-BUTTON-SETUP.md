@@ -123,5 +123,10 @@ Squarespace turns scripts off):
 - **Free plan limits** (100,000 reads and 1,000 saves a day) are far beyond
   what a church or small business site uses. Each page view is one read, and
   returning visitors' browsers still check for changes in the background.
-- **Turning it off**: remove `"source"` from the Code Injection settings, and
-  the site goes back to the settings pasted there.
+- **Moving off Cloudflare** (or handing the site over without it): on the
+  settings page, click **Move off Cloudflare…** at the bottom. It gives you
+  one snippet with the bar's code and every current setting, and no worker
+  address. Paste it over the nav block in Code Injection and the site needs
+  no outside service at all; the worker can then be deleted. The settings
+  page keeps working, but changes go live by pasting the code its
+  **Publish…** button gives you.
